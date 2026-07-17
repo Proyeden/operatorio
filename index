@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valoración Preoperatoria — Cirugía No Cardíaca</title>
+<style>
+  :root{
+    --ink:#16222e; --muted:#5b6b7a; --line:#d9e0e6; --bg:#eef2f5; --card:#fff;
+    --primary:#0e6b73; --primary-dark:#0a4f55; --navy:#17324d;
+    --priority:#2e7d4f; --priority-bg:#e4f2ea;
+    --optional:#b9770e; --optional-bg:#fbf1dd;
+    --na:#98a4b0; --na-bg:#eef1f4;
+    --low:#2e7d4f; --mid:#c07f12; --high:#c0392b;
+    --input:#fffdf5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       color:var(--ink);background:var(--bg);line-height:1.45;font-size:14px}
+  /* ---- Top bar ---- */
+  header.topbar{position:sticky;top:0;z-index:50;background:var(--primary-dark);
+       color:#fff;display:flex;align-items:center;justify-content:space-between;
+       padding:10px 18px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  header.topbar h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em;
+       display:flex;align-items:center;gap:10px}
+  header.topbar h1 .tag{font-weight:400;font-size:11px;background:rgba(255,255,255,.15);
+       padding:2px 8px;border-radius:10px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+  .status{font-size:11px;color:rgba(255,255,255,.85);font-style:italic;min-width:70px;text-align:right}
+  .btn{border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;
+       cursor:pointer;font-family:inherit;transition:.15s}
+  .btn-word{background:#fff;color:var(--primary-dark)}
+  .btn-word:hover{background:#e9f3f2}
+  .btn-pdf{background:var(--primary);color:#fff}
+  .btn-pdf:hover{background:#0c5a61}
+  .btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
+  .btn-ghost:hover{background:rgba(255,255,255,.12)}
+  /* ---- Layout ---- */
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:start}
+  .form-pane{padding:18px 20px 80px;max-height:calc(100vh - 52px);overflow-y:auto}
+  .preview-pane{position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;
+       background:#dfe6ec;padding:20px;border-left:1px solid var(--line)}
+  @media(max-width:900px){
+    .wrap{grid-template-columns:1fr}
+    .preview-pane{position:static;height:auto;max-height:none}
+    .form-pane{max-height:none;overflow:visible}
+  }
+  /* ---- Form ---- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+       margin-bottom:16px;overflow:hidden}
+  .card > h2{margin:0;font-size:13px;font-weight:700;letter-spacing:.04em;
+       text-transform:uppercase;color:#fff;background:var(--navy);padding:9px 14px;
+       display:flex;align-items:center;gap:8px}
+  .card-body{padding:12px 14px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 12px}
+  @media(max-width:520px){.grid2,.grid3{grid-template-columns:1fr}}
+  .field{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+  .field label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;
+       letter-spacing:.03em}
+  .field input,.field select,.field textarea{font-family:inherit;font-size:13px;
+       padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--input);
+       color:var(--ink);width:100%}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;
+       border-color:var(--primary);box-shadow:0 0 0 2px rgba(14,107,115,.15)}
+  .field textarea{resize:vertical;min-height:44px}
+  .hint{font-size:11px;color:var(--muted);font-style:italic;margin-top:2px}
+  /* ---- Score blocks ---- */
+  .score{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
+  .score-head{display:flex;align-items:center;justify-content:space-between;gap:8px;
+       padding:8px 12px;background:#f4f7f9;cursor:pointer;user-select:none}
+  .score-head .stitle{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px}
+  .score-head .chev{color:var(--muted);transition:transform .2s;font-size:11px}
+  .score.collapsed .chev{transform:rotate(-90deg)}
+  .score.collapsed .score-body{display:none}
+  .score-meta{display:flex;align-items:center;gap:6px}
+  .score-head .inc{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:3px;
+       font-weight:600;text-transform:uppercase;letter-spacing:.02em}
+  .score-head .inc input{accent-color:var(--primary);width:14px;height:14px;cursor:pointer}
+  .notectrl{padding:8px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;
+       gap:8px;flex-wrap:wrap;background:#f7fafb}
+  .notectrl .nclabel{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .notectrl select{font-size:12px;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--input)}
+  .notectrl .nchint{font-size:11px;color:var(--muted);font-style:italic}
+  .btn-mini{margin-left:auto;font-size:11px;font-weight:600;border:1px solid var(--line);
+       background:#fff;color:var(--primary-dark);border-radius:5px;padding:4px 9px;cursor:pointer}
+  .btn-mini:hover{background:#eef6f6}
+  /* modal biblioteca */
+  .modal-bg{position:fixed;inset:0;background:rgba(20,30,40,.5);z-index:100;display:none;
+       align-items:center;justify-content:center;padding:20px}
+  .modal-bg.open{display:flex}
+  .modal{background:#fff;border-radius:12px;width:min(560px,96vw);max-height:86vh;
+       display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+  .modal-head{background:var(--navy);color:#fff;padding:12px 16px;font-weight:700;font-size:14px;
+       display:flex;justify-content:space-between;align-items:center}
+  .modal-head button{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1}
+  .modal-search{margin:12px 16px 8px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;
+       font-size:13px;font-family:inherit}
+  .modal-list{flex:1;overflow-y:auto;padding:0 16px 8px}
+  .lib-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);
+       border-radius:8px;margin-bottom:8px;transition:.12s}
+  .lib-row:hover{border-color:var(--primary);background:#f7fafb}
+  .lib-info{flex:1;min-width:0}
+  .lib-name{font-weight:700;font-size:13px;color:var(--ink)}
+  .lib-meta{font-size:11px;color:var(--muted)}
+  .lib-actions{display:flex;gap:6px}
+  .lib-actions button{font-size:11px;font-weight:600;border:none;border-radius:5px;padding:5px 10px;cursor:pointer}
+  .lib-open{background:var(--primary);color:#fff}
+  .lib-del{background:#f4e3e3;color:#b23b3b}
+  .lib-empty{text-align:center;color:var(--muted);font-style:italic;padding:24px;font-size:13px}
+  .modal-foot{border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap;
+       justify-content:flex-end;background:#f7fafb}
+  .btn-ghost.dark{color:var(--primary-dark);border:1px solid var(--line);background:#fff}
+  .btn-ghost.dark:hover{background:#eef6f6}
+  .badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
+  .b-pri{background:var(--priority-bg);color:var(--priority)}
+  .b-opt{background:var(--optional-bg);color:var(--optional)}
+  .b-na{background:var(--na-bg);color:var(--na)}
+  .score-total{font-size:12px;font-weight:700;background:var(--navy);color:#fff;
+       padding:2px 9px;border-radius:10px;min-width:34px;text-align:center}
+  .score-body{padding:8px 12px 12px}
+  .score-interp{font-size:12px;color:var(--primary-dark);background:#eef6f6;
+       border-left:3px solid var(--primary);padding:6px 9px;border-radius:0 5px 5px 0;margin-top:8px}
+  .check{display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:13px;cursor:pointer}
+  .check input{margin-top:2px;accent-color:var(--primary);width:15px;height:15px;flex:0 0 auto}
+  .check .pts{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600;
+       background:#eef1f4;padding:0 6px;border-radius:8px}
+  .check.auto{opacity:.75}
+  .check.auto input{pointer-events:none}
+  .autoflag{font-size:9px;background:#e4eef0;color:var(--primary);padding:1px 5px;
+       border-radius:6px;font-weight:700;margin-left:4px}
+  .rowsel{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .rowsel label{font-size:12px;font-weight:600;color:var(--muted);flex:0 0 auto}
+  .rowsel select{flex:1;font-size:12px;padding:5px 7px;border:1px solid var(--line);
+       border-radius:5px;background:var(--input)}
+  /* ---- Recs ---- */
+  .rec-item{display:flex;align-items:flex-start;gap:8px;padding:3px 0;font-size:12.5px;cursor:pointer}
+  .rec-item input{margin-top:2px;accent-color:var(--primary)}
+  .rec-suggest{font-size:12px;background:#eef6f6;border-left:3px solid var(--primary);
+       padding:5px 9px;border-radius:0 5px 5px 0;margin:3px 0;color:var(--primary-dark)}
+  /* ---- Note preview ---- */
+  .note{background:#fff;max-width:720px;margin:0 auto;padding:34px 40px;
+       box-shadow:0 3px 14px rgba(0,0,0,.12);border-radius:3px;font-size:12.5px;color:#1a1a1a}
+  .note h1{font-size:17px;text-align:center;background:var(--navy);color:#fff;
+       margin:-34px -40px 0;padding:14px;letter-spacing:.03em}
+  .note .frame{font-size:10.5px;font-style:italic;color:#555;background:#fbf3dc;
+       padding:8px 12px;margin:0 -40px 16px;border-bottom:1px solid #eadcbb}
+  .note h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#fff;
+       background:var(--primary);padding:5px 10px;margin:16px 0 8px;border-radius:3px}
+  .note table{width:100%;border-collapse:collapse;margin:4px 0}
+  .note td{border:1px solid #cfd8de;padding:4px 7px;vertical-align:top;font-size:11.5px}
+  .note td.lab{background:#f2f5f7;font-weight:600;width:26%}
+  .note td.lab-sm{background:#f2f5f7;font-weight:600;font-size:11px}
+  .note .risk-tbl td{font-size:11px}
+  .note .risk-tbl th{background:#8ea9db;color:#fff;padding:4px 7px;font-size:11px;
+       border:1px solid #cfd8de;text-align:left}
+  .note .pri{background:#e4f2ea;color:#2e7d4f;font-weight:700;text-align:center}
+  .note .opt{color:#7a6a4a;text-align:center;font-weight:600}
+  .note .na{background:#eef1f4;color:#9aa4ae;text-align:center;font-style:italic}
+  .note .na-row td{color:#b3bcc4}
+  .note .algo{padding:9px 11px;border-radius:5px;font-size:11.5px;line-height:1.5}
+  .note .algo.low{background:#e4f2ea;color:#2b5e3f}
+  .note .algo.high{background:#fbe4d8;color:#8a3b16;font-weight:600}
+  .note .recs{white-space:pre-wrap;font-size:11.5px;line-height:1.55;padding:8px 4px}
+  .note .sign{margin-top:34px;text-align:center}
+  .note .sign .line{border-top:1px solid #333;width:220px;margin:0 auto 4px}
+  .note .sign .nm{font-weight:700}
+  .note .sign .sm{font-size:10.5px;color:#555}
+  .note .muted{color:#777;font-style:italic;font-size:10.5px}
+  .preview-label{max-width:720px;margin:0 auto 8px;font-size:11px;color:#5b6b7a;
+       text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  /* ---- Print ---- */
+  @media print{
+    header.topbar,.form-pane,.preview-label{display:none!important}
+    .wrap{display:block}
+    .preview-pane{position:static;height:auto;overflow:visible;background:#fff;
+         padding:0;border:none}
+    .note{box-shadow:none;max-width:none;margin:0;padding:20px 24px;border-radius:0}
+    .note h1{margin:-20px -24px 0}
+    .note .frame{margin:0 -24px 14px}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>Valoración Preoperatoria <span class="tag">Cirugía no cardíaca</span></h1>
+  <div class="actions">
+    <span id="status" class="status"></span>
+    <button class="btn btn-ghost" onclick="newPatient()">Nuevo</button>
+    <button class="btn btn-ghost" onclick="saveToLibrary()">Guardar paciente</button>
+    <button class="btn btn-ghost" onclick="openLibraryModal()">Abrir paciente</button>
+    <button class="btn btn-pdf" onclick="window.print()">Imprimir / PDF</button>
+    <button class="btn btn-word" onclick="downloadWord()">Descargar Word</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- ================= FORM ================= -->
+  <div class="form-pane" id="formPane">
+    <div class="card"><h2>Datos del paciente</h2><div class="card-body">
+      <div class="field"><label>Nombre completo</label><input id="nombre" oninput="render()"></div>
+      <div class="grid3">
+        <div class="field"><label>Fecha</label><input type="date" id="fecha" oninput="render()"></div>
+        <div class="field"><label>Edad (años)</label><input type="number" id="edad" min="0" oninput="calc()"></div>
+        <div class="field"><label>Sexo</label><select id="sexo" onchange="calc()"><option value=""></option><option>Femenino</option><option>Masculino</option></select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Estado civil</label><input id="civil" oninput="render()"></div>
+        <div class="field"><label>Religión</label><input id="religion" oninput="render()"></div>
+      </div>
+    </div></div>
+
+    <div class="card"><h2>Cirugía planeada</h2><div class="card-body">
+      <div class="field"><label>Procedimiento</label><input id="proc" oninput="render()"></div>
+      <div class="grid2">
+        <div class="field"><label>Tipo de cirugía</label><select id="tipo" onchange="onTipoChange()"></select></div>
+        <div class="field"><label>Riesgo quirúrgico</label><select id="riesgoq" onchange="calc()">
+          <option value="">—</option><option>Bajo (&lt;1%)</option><option>Intermedio (1-5%)</option><option>Alto (&gt;5%)</option>
+        </select></div>
+      </div>
+    </div></div>
+
+    <div class="card"><h2>Antecedentes patológicos</h2><div class="card-body">
+      <div class="field"><label>Médicos</label><textarea id="a_med" oninput="render()"></textarea></div>
+      <div class="grid2">
+        <div class="field"><label>Quirúrgicos</label><textarea id="a_qx" oninput="render()"></textarea></div>
+        <div class="field"><label>Traumatológicos</label><textarea id="a_trauma" oninput="render()"></textarea></div>
+        <div class="field"><label>Alérgicos</label><textarea id="a_alerg" oninput="render()"></textarea></div>
+        <div class="field"><label>Gineco-obstétricos</label><textarea id="a_go" oninput="render()"></textarea></div>
+      </div>
+      <div class="field"><label>Medicación actual</label><textarea id="a_med_act" oninput="render()"></textarea></div>
+    </div></div>
+
+    <div class="card"><h2>Hábitos y estilo de vida</h2><div class="card-body">
+      <div class="grid3">
+        <div class="field"><label>Ejercicio</label><input id="h_ej" oninput="render()"></div>
+        <div class="field"><label>Alcohol</label><input id="h_alc" oninput="render()"></div>
+        <div class="field"><label>Tabaco</label><input id="h_tab" oninput="render()"></div>
+      </div>
+    </div></div>
+
+    <div class="card"><h2>Examen físico</h2><div class="card-body">
+      <div class="grid3">
+        <div class="field"><label>PA (mmHg)</label><input id="v_pa" oninput="render()"></div>
+        <div class="field"><label>FC (lpm)</label><input id="v_fc" oninput="render()"></div>
+        <div class="field"><label>FR (rpm)</label><input id="v_fr" oninput="render()"></div>
+        <div class="field"><label>Temp (°C)</label><input id="v_temp" oninput="render()"></div>
+        <div class="field"><label>SatO₂ (%)</label><input id="v_sat" oninput="render()"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Peso</label><input type="number" id="peso" oninput="calc()"></div>
+        <div class="field"><label>Unidad</label><select id="peso_u" onchange="calc()"><option>lb</option><option>kg</option></select></div>
+        <div class="field"><label>Talla (cm)</label><input type="number" id="talla" oninput="calc()"></div>
+      </div>
+      <div class="hint" id="antropo_hint"></div>
+      <div class="field"><label>Estado general</label><textarea id="ef_gen" oninput="render()"></textarea></div>
+      <div class="grid2">
+        <div class="field"><label>Cabeza y cuello</label><textarea id="ef_cab" oninput="render()"></textarea></div>
+        <div class="field"><label>Tórax</label><textarea id="ef_tor" oninput="render()"></textarea></div>
+        <div class="field"><label>Abdomen</label><textarea id="ef_abd" oninput="render()"></textarea></div>
+        <div class="field"><label>Extremidades</label><textarea id="ef_ext" oninput="render()"></textarea></div>
+        <div class="field"><label>Neurológico</label><textarea id="ef_neuro" oninput="render()"></textarea></div>
+        <div class="field"><label>Piel y faneras</label><textarea id="ef_piel" oninput="render()"></textarea></div>
+      </div>
+    </div></div>
+
+    <div class="card"><h2>Estudios complementarios</h2><div class="card-body">
+      <div class="grid2">
+        <div class="field"><label>EKG</label><input id="ekg" oninput="render()"></div>
+        <div class="field"><label>Rx tórax</label><input id="rx" oninput="render()"></div>
+      </div>
+      <div class="grid2" style="margin-top:6px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:4px">HEMATOLOGÍA</div>
+          <div class="field"><label>WBC (xmm³)</label><input id="l_wbc" oninput="render()"></div>
+          <div class="field"><label>Hemoglobina (g/dl)</label><input id="l_hb" oninput="calc()"></div>
+          <div class="field"><label>Hematocrito (%)</label><input id="l_hto" oninput="render()"></div>
+          <div class="field"><label>Plaquetas (xmm³)</label><input id="l_plt" oninput="render()"></div>
+          <div class="field"><label>Neutrófilos (%)</label><input id="l_neu" oninput="render()"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:4px">QUÍMICA</div>
+          <div class="field"><label>Creatinina (mg/dl)</label><input id="l_cr" oninput="calc()"></div>
+          <div class="field"><label>BUN (mg/dl)</label><input id="l_bun" oninput="render()"></div>
+          <div class="field"><label>Glucosa (mg/dl)</label><input id="l_glu" oninput="render()"></div>
+          <div class="field"><label>Sodio (mEq/l)</label><input id="l_na" oninput="render()"></div>
+          <div class="field"><label>Potasio (mEq/l)</label><input id="l_k" oninput="render()"></div>
+        </div>
+      </div>
+      <div class="grid3" style="margin-top:6px">
+        <div class="field"><label>TP (seg)</label><input id="l_tp" oninput="render()"></div>
+        <div class="field"><label>TPT (seg)</label><input id="l_tpt" oninput="render()"></div>
+        <div class="field"><label>INR</label><input id="l_inr" oninput="render()"></div>
+      </div>
+    </div></div>
+
+    <div class="card"><h2>Escalas de riesgo</h2>
+      <div class="notectrl">
+        <span class="nclabel">Incluir en la nota:</span>
+        <select id="notePreset" onchange="setPreset(this.value)">
+          <option value="solo_prio">Solo prioritarias</option>
+          <option value="prio_opt">Prioritarias + opcionales</option>
+          <option value="todas">Todas</option>
+          <option value="custom">Personalizado</option>
+        </select>
+        <span class="nchint">o marque «nota» en cada escala</span>
+        <button class="btn-mini" onclick="collapseIrrelevant()">Plegar no relevantes</button>
+      </div>
+      <div class="card-body" id="scoresBox"></div></div>
+
+    <div class="card"><h2>Recomendaciones</h2><div class="card-body">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Sugeridas automáticamente según los scores:</div>
+      <div id="recSuggest"></div>
+      <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">Banco (marque para incluir):</div>
+      <div id="recBank"></div>
+      <div class="field" style="margin-top:10px"><label>Observaciones adicionales (texto libre)</label>
+        <textarea id="recFree" rows="4" oninput="render()"></textarea></div>
+    </div></div>
+  </div>
+
+  <!-- ================= PREVIEW ================= -->
+  <div class="preview-pane">
+    <div class="preview-label">Vista previa de la nota</div>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+
+<!-- ================= MODAL BIBLIOTECA ================= -->
+<div class="modal-bg" id="libModal" onclick="if(event.target===this)closeLibrary()">
+  <div class="modal">
+    <div class="modal-head"><span>Pacientes guardados</span><button onclick="closeLibrary()" title="Cerrar">✕</button></div>
+    <input class="modal-search" id="libSearch" placeholder="Buscar por nombre…" oninput="renderLibrary()">
+    <div class="modal-list" id="libList"></div>
+    <div class="modal-foot">
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFileToLibrary(event)">
+      <button class="btn btn-ghost dark" onclick="document.getElementById('importFile').click()">Importar archivo</button>
+      <button class="btn btn-ghost dark" onclick="exportLibrary()">Respaldar biblioteca</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const TIPOS = ["Oftalmológica","Dermatológica/plástica menor","Endoscopía con sedación","Mama",
+"Hernia de pared","Vesícula (lap)","Ginecológica","Urológica (RTU)","Cabeza y cuello/tiroides",
+"Ortopedia menor","Columna","Trauma mayor","Artroplastia cadera/rodilla","Abdominal mayor",
+"Vascular mayor","Bariátrica","Otra/General"];
+
+const REL = {
+ "RCRI":     ["N","N","O","O","O","P","P","P","O","O","P","P","P","P","P","P","P"],
+ "Detsky":   ["N","N","N","O","O","O","O","O","O","O","O","O","O","O","P","O","O"],
+ "DASI":     ["N","N","O","O","O","P","P","P","O","O","P","O","P","P","P","P","O"],
+ "ARISCAT":  ["N","N","O","O","O","P","P","O","O","O","P","P","O","P","P","P","P"],
+ "Caprini":  ["O","O","O","O","O","P","P","P","O","O","P","P","P","P","P","P","P"],
+ "Wells":    ["N","N","N","N","N","O","O","O","N","O","O","P","P","O","P","O","O"],
+ "STOP-BANG":["O","O","P","O","O","O","O","O","O","O","O","O","O","O","O","P","O"],
+ "mFI-5":    ["O","N","O","O","O","O","O","O","O","O","P","P","P","P","P","O","O"],
+ "CFS":      ["O","O","O","O","O","O","O","O","O","O","P","P","P","O","P","O","O"],
+ "Charlson": ["O","O","O","O","O","O","O","O","O","O","O","P","P","P","P","O","O"],
+ "Apfel":    ["O","O","P","P","O","P","P","P","P","O","P","O","O","P","O","P","P"],
+ "ASA":      ["P","P","P","P","P","P","P","P","P","P","P","P","P","P","P","P","P"],
+};
+// tipos que auto-marcan cirugía de alto riesgo RCRI (intraperitoneal/intratorácica/vascular)
+const HIRISK = new Set(["Vesícula (lap)","Ginecológica","Urológica (RTU)","Abdominal mayor","Vascular mayor","Bariátrica"]);
+
+const PROF = {
+"Oftalmológica":["Colirio de moxifloxacino o gatifloxacino (o neomicina-gentamicina-polimixina B): 1 gota c/5–15 min × 5 dosis.","Opcional: cefazolina 100 mg subconjuntival al cierre."],
+"Dermatológica/plástica menor":["Cirugía limpia: generalmente NO requiere profilaxis sistémica.","Si se indica: cefazolina 1–2 g IV dosis única."],
+"Endoscopía con sedación":["CPRE sin obstrucción: no requiere. Con obstrucción biliar: ciprofloxacino 500–750 mg VO (o 400 mg IV) o piperacilina/tazobactam 4,5 g IV.","El máximo beneficio cuando no es posible drenaje completo."],
+"Mama":["Cefazolina 1–2 g IV dosis única.","Alternativas: AMP/SB 3 g IV, clindamicina 900 mg IV o vancomicina 1 g IV (1,5 g si >90 kg)."],
+"Hernia de pared":["Cefazolina 1–2 g IV dosis única.","Alergia β-lactámicos: clindamicina 900 mg IV o vancomicina 1 g IV."],
+"Vesícula (lap)":["Laparoscópica de bajo riesgo: NO requiere profilaxis.","Alto riesgo (>70 a, colecistitis aguda, ictericia obstructiva, litiasis) o abierta: cefazolina, cefoxitina o cefotetán 1–2 g IV. Colangitis: tratar como infección."],
+"Ginecológica":["Histerectomía: cefazolina 1–2 g, cefoxitina 1–2 g, cefotetán 1–2 g o AMP/SB 3 g IV, 30 min antes.","Alternativa: (clindamicina 900 mg o vancomicina 1 g) + (gentamicina 5 mg/kg o aztreonam 2 g), o metronidazol 500 mg + ciprofloxacino 400 mg IV."],
+"Urológica (RTU)":["RTU de próstata / cistoscopia con manipulación: ciprofloxacino 500 mg VO.","Ajustar a resistencia local. Tratar IU antes del procedimiento. Biopsia prostática transrectal: CIP 500 mg VO 12 h antes y repetir 12 h después."],
+"Cabeza y cuello/tiroides":["Cirugía limpia (tiroides): NO requiere. Con mucosa oral/faríngea: cefazolina 2 g IV ± metronidazol 500 mg.","Alternativa: clindamicina 600–900 mg IV ± gentamicina."],
+"Ortopedia menor":["Reducción abierta de fractura cerrada con fijación interna: ceftriaxona 2 g IV dosis única.","Con material protésico: cefazolina 1–2 g IV o vancomicina 1 g IV (1,5 g si >90 kg)."],
+"Columna":["Artrodesis de columna: cefazolina 1–2 g IV (3 g si >120 kg) dosis única.","Alternativa: vancomicina 1 g IV (1,5 g si >90 kg) o clindamicina 900 mg IV. Suspender dentro de 24 h."],
+"Trauma mayor":["Según sitio. Fractura cerrada con fijación interna: ceftriaxona 2 g IV.","Fractura abierta: tratar como contaminada. Reevaluar según lesiones."],
+"Artroplastia cadera/rodilla":["Cadera: cefazolina 1–2 g IV (3 g si >120 kg). Rodilla/otra: cefazolina 1–2 g IV o vancomicina 1 g IV.",">90 kg: vancomicina 1,5 g o clindamicina 900 mg. Mupirocina intranasal si S. aureus."],
+"Abdominal mayor":["Colorrectal: cefazolina 1–2 g + metronidazol 0,5 g IV; o cefoxitina/cefotetán; o ceftriaxona 2 g + metronidazol; o ertapenem 1 g IV.","Considerar preparación intestinal + antibiótico oral. Gastroduodenal: cefazolina/cefoxitina/cefotetán 1–2 g o ceftriaxona 2 g IV."],
+"Vascular mayor":["Aneurisma/revascularización: cefazolina 2 g IV. Aórtica o con prótesis: cefazolina 1–2 g (3 g si >120 kg) IV.","Alto riesgo/SARM: vancomicina 1 g IV. Mupirocina intranasal si S. aureus."],
+"Bariátrica":["Cefazolina 2 g IV (3 g si >120 kg) dosis única; redosificar en cirugía prolongada.","Dosis ajustada por obesidad. Prioridad de profilaxis de TVP y evaluación de SAOS."],
+"Otra/General":["Cefazolina 1–2 g IV 30–60 min antes de la incisión (2 g si >80 kg; 3 g si >120 kg).","Redosificar si >4 h o sangrado significativo. Alergia: clindamicina 900 mg o vancomicina 1 g IV."],
+};
+
+/* -------- Score definitions -------- */
+const SCORES = {
+ "RCRI":{title:"RCRI — Índice de Riesgo Cardíaco (Lee)",items:[
+   {id:"rcri_hr",label:"Cirugía de alto riesgo (intratorácica/intraperitoneal/vascular)",pts:1,auto:"hirisk"},
+   {id:"rcri_isq",label:"Cardiopatía isquémica",pts:1},
+   {id:"rcri_icc",label:"Insuficiencia cardíaca congestiva",pts:1},
+   {id:"rcri_acv",label:"Enfermedad cerebrovascular (ACV/AIT)",pts:1},
+   {id:"rcri_dm",label:"Diabetes con insulinoterapia",pts:1},
+   {id:"rcri_cr",label:"Creatinina > 2.0 mg/dl",pts:1,auto:"crea"},
+ ]},
+ "Detsky":{title:"Índice cardíaco modificado de Detsky",items:[
+   {id:"d1",label:"IAM < 6 meses",pts:10},{id:"d2",label:"IAM > 6 meses",pts:5},
+   {id:"d3",label:"Angina CCS III",pts:10},{id:"d4",label:"Angina CCS IV",pts:20},
+   {id:"d5",label:"Angina inestable < 3 meses",pts:10},{id:"d6",label:"Edema agudo de pulmón < 1 semana",pts:10},
+   {id:"d7",label:"Edema agudo de pulmón previo",pts:5},{id:"d8",label:"Estenosis aórtica crítica",pts:20},
+   {id:"d9",label:"Ritmo no sinusal / extrasístoles auriculares",pts:5},{id:"d10",label:">5 EV/min",pts:5},
+   {id:"d11",label:"Mal estado general",pts:5},{id:"d12",label:"Edad > 70 años",pts:5,auto:"age70"},
+   {id:"d13",label:"Cirugía de emergencia",pts:10},
+ ]},
+ "DASI":{title:"DASI — capacidad funcional",wtype:"cando",items:[
+   {id:"da1",label:"Cuidarse solo (comer, vestirse, baño)",pts:2.75},{id:"da2",label:"Caminar en interiores",pts:1.75},
+   {id:"da3",label:"Caminar 1-2 cuadras en plano",pts:2.75},{id:"da4",label:"Subir un piso de escaleras/colina",pts:5.50},
+   {id:"da5",label:"Correr una distancia corta",pts:8.00},{id:"da6",label:"Trabajo ligero en casa",pts:2.70},
+   {id:"da7",label:"Trabajo moderado (aspirar, cargar compras)",pts:3.50},{id:"da8",label:"Trabajo pesado (fregar pisos, mover muebles)",pts:8.00},
+   {id:"da9",label:"Trabajo de jardín",pts:4.50},{id:"da10",label:"Relaciones sexuales",pts:5.25},
+   {id:"da11",label:"Deportes moderados",pts:6.00},{id:"da12",label:"Deportes intensos",pts:7.50},
+ ]},
+ "ARISCAT":{title:"ARISCAT — complicaciones pulmonares",selects:[
+   {id:"ar_spo2",label:"SpO₂ preop",opts:[["≥96%",0],["91-95%",8],["≤90%",24]]},
+   {id:"ar_inc",label:"Incisión",opts:[["Periférica",0],["Abdominal alta",15],["Intratorácica",24]]},
+   {id:"ar_dur",label:"Duración",opts:[["<2 h",0],["2-3 h",16],[">3 h",23]]},
+ ],items:[
+   {id:"ar_age",label:"Edad (auto)",pts:0,auto:"ariscatAge"},
+   {id:"ar_resp",label:"Infección respiratoria en el último mes",pts:17},
+   {id:"ar_anemia",label:"Anemia (Hb ≤10 g/dl)",pts:11,auto:"anemia"},
+   {id:"ar_emerg",label:"Cirugía de emergencia",pts:8},
+ ]},
+ "Caprini":{title:"Caprini — riesgo de TVP",items:[
+   {id:"cap_age",label:"Edad (auto por rango)",pts:0,auto:"capriniAge"},
+   {id:"c1",label:"Cirugía menor programada",pts:1},{id:"c2",label:"Cirugía mayor (>45 min) / laparoscópica >45 min",pts:2},
+   {id:"c3",label:"Artroplastia mayor cadera/rodilla",pts:5},{id:"c4",label:"IMC > 25",pts:1,auto:"imc25"},
+   {id:"c5",label:"Edema de MI",pts:1},{id:"c6",label:"Venas varicosas",pts:1},
+   {id:"c7",label:"Embarazo/posparto",pts:1},{id:"c8",label:"Sepsis (<1 mes)",pts:1},
+   {id:"c9",label:"Enf. pulmonar grave/neumonía (<1 mes)",pts:1},{id:"c10",label:"EPOC/función pulmonar anormal",pts:1},
+   {id:"c11",label:"IAM agudo",pts:1},{id:"c12",label:"ICC (<1 mes)",pts:1},
+   {id:"c13",label:"Reposo en cama (médico)",pts:1},{id:"c14",label:"Enf. inflamatoria intestinal",pts:1},
+   {id:"c15",label:"Confinado a cama >72 h",pts:2},{id:"c16",label:"Yeso inmovilizador (<1 mes)",pts:2},
+   {id:"c17",label:"Acceso venoso central",pts:2},{id:"c18",label:"Antecedente de TVP/TEP",pts:3},
+   {id:"c19",label:"Historia familiar de trombosis",pts:3},{id:"c20",label:"Trombofilia (F. V Leiden, etc.)",pts:3},
+   {id:"c21",label:"Trombocitopenia inducida por heparina",pts:3},{id:"c22",label:"ACV (<1 mes)",pts:5},
+   {id:"c23",label:"Fractura cadera/pelvis/pierna",pts:5},{id:"c24",label:"Trauma múltiple (<1 mes)",pts:5},
+   {id:"c25",label:"Lesión medular aguda (<1 mes)",pts:5},{id:"c26",label:"Anticonceptivos orales/TRH",pts:1},
+ ]},
+ "STOP-BANG":{title:"STOP-BANG — riesgo de SAOS",items:[
+   {id:"sb_s",label:"S — Ronquido fuerte",pts:1},{id:"sb_t",label:"T — Cansancio diurno",pts:1},
+   {id:"sb_o",label:"O — Apneas observadas",pts:1},{id:"sb_p",label:"P — Hipertensión arterial",pts:1},
+   {id:"sb_b",label:"B — IMC > 35 (auto)",pts:1,auto:"imc35"},{id:"sb_a",label:"A — Edad > 50 (auto)",pts:1,auto:"age50"},
+   {id:"sb_n",label:"N — Circunferencia cuello > 40 cm",pts:1},{id:"sb_g",label:"G — Sexo masculino (auto)",pts:1,auto:"male"},
+ ]},
+ "mFI-5":{title:"mFI-5 — fragilidad",items:[
+   {id:"m1",label:"Diabetes mellitus",pts:1},{id:"m2",label:"EPOC o neumonía dependiente",pts:1},
+   {id:"m3",label:"Insuficiencia cardíaca congestiva",pts:1},{id:"m4",label:"HTA en tratamiento",pts:1},
+   {id:"m5",label:"Estado funcional dependiente",pts:1},
+ ]},
+ "Apfel":{title:"Apfel — riesgo de NVPO",items:[
+   {id:"ap_f",label:"Sexo femenino (auto)",pts:1,auto:"female"},{id:"ap_nf",label:"No fumador",pts:1},
+   {id:"ap_h",label:"Antecedente de NVPO/cinetosis",pts:1},{id:"ap_op",label:"Uso previsto de opioides",pts:1},
+ ]},
+ "Charlson":{title:"Charlson — comorbilidad",items:[
+   {id:"ch_age",label:"Edad (auto: 1 pt/década desde 50)",pts:0,auto:"charlsonAge"},
+   {id:"ch1",label:"Infarto de miocardio",pts:1},{id:"ch2",label:"Insuficiencia cardíaca congestiva",pts:1},
+   {id:"ch3",label:"Enfermedad vascular periférica",pts:1},{id:"ch4",label:"Enfermedad cerebrovascular",pts:1},
+   {id:"ch5",label:"Demencia",pts:1},{id:"ch6",label:"EPOC",pts:1},{id:"ch7",label:"Enf. tejido conectivo",pts:1},
+   {id:"ch8",label:"Úlcera péptica",pts:1},{id:"ch9",label:"Enf. hepática leve",pts:1},
+   {id:"ch10",label:"Diabetes sin complicaciones",pts:1},{id:"ch11",label:"Diabetes con daño de órgano",pts:2},
+   {id:"ch12",label:"Hemiplejía",pts:2},{id:"ch13",label:"Enf. renal moderada-grave",pts:2},
+   {id:"ch14",label:"Tumor sólido sin metástasis",pts:2},{id:"ch15",label:"Leucemia",pts:2},
+   {id:"ch16",label:"Linfoma",pts:2},{id:"ch17",label:"Enf. hepática moderada-grave",pts:3},
+   {id:"ch18",label:"Tumor sólido metastásico",pts:6},{id:"ch19",label:"SIDA",pts:6},
+ ]},
+ "Wells":{title:"Wells — probabilidad de TVP",items:[
+   {id:"w1",label:"Cáncer activo",pts:1},{id:"w2",label:"Parálisis/inmovilización de MI",pts:1},
+   {id:"w3",label:"Encamado >3 d o cirugía mayor <12 sem",pts:1},{id:"w4",label:"Dolor en trayecto venoso profundo",pts:1},
+   {id:"w5",label:"Edema de toda la pierna",pts:1},{id:"w6",label:"Edema pantorrilla >3 cm",pts:1},
+   {id:"w7",label:"Edema con fóvea (pierna sintomática)",pts:1},{id:"w8",label:"Venas colaterales superficiales",pts:1},
+   {id:"w9",label:"Antecedente de TVP previa",pts:1},{id:"w10",label:"Diagnóstico alternativo ≥ probable",pts:-2},
+ ]},
+};
+const SCORE_ORDER=["RCRI","Detsky","DASI","ARISCAT","Caprini","Wells","STOP-BANG","mFI-5","CFS","Charlson","Apfel","ASA"];
+
+const REC_BANK=[
+"Tiempo quirúrgico corto.","Movilización temprana postoperatoria.",
+"Ayuno según protocolo ERAS (líquidos claros hasta 2 h antes).",
+"Llevar a sala con PA < 140/90 mmHg y evitar hipotensión sostenida (PAM < 65 mmHg).",
+"Monitoreo continuo de signos vitales transoperatorio y en la primera hora postoperatoria.",
+"Profilaxis mecánica de TVP con compresión neumática intermitente o medias de compresión graduada.",
+"Profilaxis antibiótica con cefazolina 2 g IV 30 min antes de incisión; repetir si cirugía > 4 h.",
+"Continuar antihipertensivos el día de la cirugía (excepto IECA/ARA-II según protocolo).",
+"Control glucémico perioperatorio (meta 140-180 mg/dl).",
+"Manejo de anticoagulación/antiagregación según riesgo trombótico y hemorrágico.",
+"Analgesia multimodal, minimizar opioides.","Profilaxis de náusea y vómito postoperatorio (NVPO).",
+"Normotermia perioperatoria activa.","Optimización de hemoglobina preoperatoria si anemia.",
+"Reservar hemoderivados / pruebas cruzadas según sangrado esperado.",
+"Interconsulta a cardiología.","Interconsulta a neumología.",
+"Consentimiento informado reforzado (riesgo elevado).",
+"Planificar cama de cuidados intermedios / UCI postoperatoria.",
+];
+
+/* ================= STATE ================= */
+const S={}; // score item checked states handled via DOM; selects via DOM
+
+/* ================= BUILD UI ================= */
+function el(tag,attrs,html){const e=document.createElement(tag);if(attrs)for(const k in attrs)e.setAttribute(k,attrs[k]);if(html!=null)e.innerHTML=html;return e;}
+
+function buildTipos(){
+  const sel=document.getElementById("tipo");
+  TIPOS.forEach(t=>{const o=document.createElement("option");o.textContent=t;sel.appendChild(o);});
+  sel.value="Otra/General";
+}
+function buildScores(){
+  const box=document.getElementById("scoresBox");
+  SCORE_ORDER.forEach(name=>{
+    const def=SCORES[name];
+    const wrap=el("div",{class:"score",id:"sc_"+name});
+    const head=el("div",{class:"score-head",onclick:"toggleScore('"+name+"')"});
+    head.innerHTML=`<span class="stitle"><span class="chev">▼</span>${name}</span>
+      <span class="score-meta">
+      <label class="inc" onclick="event.stopPropagation()" title="Incluir esta escala en la nota final">
+      <input type="checkbox" id="inc_${name}" onchange="onIncToggle()">nota</label>
+      <span class="badge b-opt" id="badge_${name}">Opcional</span>
+      <span class="score-total" id="tot_${name}">0</span></span>`;
+    wrap.appendChild(head);
+    const body=el("div",{class:"score-body"});
+    // special: CFS & ASA are selects only
+    if(name==="CFS"){
+      body.innerHTML=`<div class="rowsel"><label>Nivel CFS</label>
+        <select id="cfs_sel" onchange="calc()">
+        <option value="">—</option>
+        <option value="1">1 · Muy en forma</option><option value="2">2 · En forma</option>
+        <option value="3">3 · Controlado</option><option value="4">4 · Vulnerable</option>
+        <option value="5">5 · Fragilidad leve</option><option value="6">6 · Fragilidad moderada</option>
+        <option value="7">7 · Fragilidad grave</option><option value="8">8 · Muy grave</option>
+        <option value="9">9 · Terminal</option></select></div>
+        <div class="score-interp" id="interp_CFS"></div>`;
+    } else if(name==="ASA"){
+      body.innerHTML=`<div class="rowsel"><label>Clase ASA</label>
+        <select id="asa_sel" onchange="calc()"><option value="">—</option>
+        <option>ASA I</option><option>ASA II</option><option>ASA III</option>
+        <option>ASA IV</option><option>ASA V</option><option>ASA VI</option></select></div>
+        <div class="score-interp" id="interp_ASA"></div>`;
+    } else {
+      let h="";
+      if(def.selects){def.selects.forEach(s=>{
+        h+=`<div class="rowsel"><label>${s.label}</label><select id="${s.id}" onchange="calc()">`;
+        s.opts.forEach(o=>h+=`<option value="${o[1]}">${o[0]}</option>`);
+        h+=`</select></div>`;
+      });}
+      const cando=def.wtype==="cando";
+      def.items.forEach(it=>{
+        const auto=it.auto?` class="check auto"`:` class="check"`;
+        const autoflag=it.auto?`<span class="autoflag">auto</span>`:"";
+        const ptlabel=cando?"":(it.pts>=0?"+"+it.pts:it.pts);
+        h+=`<label${auto}><input type="checkbox" id="${it.id}" onchange="calc()">
+          <span>${it.label}${autoflag}</span><span class="pts">${ptlabel}</span></label>`;
+      });
+      h+=`<div class="score-interp" id="interp_${name}"></div>`;
+      body.innerHTML=h;
+    }
+    wrap.appendChild(body);
+    box.appendChild(wrap);
+  });
+}
+function buildRecBank(){
+  const b=document.getElementById("recBank");
+  REC_BANK.forEach((t,i)=>{
+    const l=el("label",{class:"rec-item"});
+    l.innerHTML=`<input type="checkbox" id="rb_${i}" onchange="render()"><span>${t}</span>`;
+    b.appendChild(l);
+  });
+}
+
+/* ================= HELPERS ================= */
+const val=id=>{const e=document.getElementById(id);return e?e.value.trim():"";};
+const num=id=>{const v=parseFloat(val(id));return isNaN(v)?null:v;};
+const chk=id=>{const e=document.getElementById(id);return e?e.checked:false;};
+const setChk=(id,v)=>{const e=document.getElementById(id);if(e)e.checked=v;};
+function pesoKg(){const p=num("peso");if(p===null)return null;return val("peso_u")==="lb"?p/2.2046:p;}
+function imc(){const p=pesoKg(),t=num("talla");if(p===null||!t)return null;return p/Math.pow(t/100,2);}
+function sct(){const p=pesoKg(),t=num("talla");if(p===null||!t)return null;return Math.sqrt(p*t/3600);}
+function rt24(){const p=pesoKg();if(p===null)return null;let r=0;r+=Math.min(p,10)*100;if(p>10)r+=Math.min(p-10,10)*50;if(p>20)r+=(p-20)*20;return r;}
+
+/* ================= AUTO FLAGS ================= */
+function autoState(id){
+  const edad=num("edad"), sexo=val("sexo"), cr=num("l_cr"), hb=num("l_hb"), bmi=imc(), tipo=val("tipo");
+  switch(id){
+    case "hirisk": return HIRISK.has(tipo);
+    case "crea": return cr!==null && cr>2;
+    case "age70": return edad!==null && edad>70;
+    case "age50": return edad!==null && edad>50;
+    case "male": return sexo==="Masculino";
+    case "female": return sexo==="Femenino";
+    case "imc25": return bmi!==null && bmi>25;
+    case "imc35": return bmi!==null && bmi>35;
+    case "anemia": return hb!==null && hb<=10;
+    default: return false;
+  }
+}
+function autoPts(id){
+  const edad=num("edad");
+  if(id==="ariscatAge"){if(edad===null)return 0;return edad>80?16:(edad>50?3:0);}
+  if(id==="capriniAge"){if(edad===null)return 0;return edad>=75?3:(edad>=61?2:(edad>=41?1:0));}
+  if(id==="charlsonAge"){if(edad===null)return 0;return Math.max(0,Math.floor((edad-40)/10));}
+  return null;
+}
+
+/* ================= SCORE CALC ================= */
+function scoreTotal(name){
+  const def=SCORES[name];let tot=0;
+  if(!def)return 0;
+  if(def.selects)def.selects.forEach(s=>{tot+=parseInt(val(s.id)||0);});
+  if(def.items)def.items.forEach(it=>{
+    if(it.auto){
+      const ap=autoPts(it.auto);
+      if(ap!==null){tot+=ap;}                       // puntos por rango (edad)
+      else if(autoState(it.auto)){tot+=it.pts;}      // binario auto
+    } else if(chk(it.id)){tot+=it.pts;}
+  });
+  return tot;
+}
+function dasiMets(){const t=scoreTotal("DASI");return (0.43*t+9.6)/3.5;}
+
+/* ---- interpretaciones ---- */
+function interp(name){
+  const t=scoreTotal(name);
+  switch(name){
+    case "RCRI":
+      if(t<=0)return "Clase I · MACE 0.4-0.5% · riesgo muy bajo; sin estudios cardíacos adicionales.";
+      if(t===1)return "Clase II · MACE ~1.3-2.6% · riesgo bajo-intermedio; optimización médica y valorar capacidad funcional.";
+      if(t===2)return "Clase III · MACE ~4-7% · riesgo intermedio; considerar biomarcadores y valoración cardiológica.";
+      return "Clase IV · MACE ≥9% · riesgo alto; optimización cardiológica y monitoreo perioperatorio.";
+    case "Detsky":
+      if(t<=15)return "Clase I · riesgo cardíaco bajo (<6%).";
+      if(t<=30)return "Clase II · riesgo intermedio; valoración cardiológica previa.";
+      return "Clase III · riesgo alto; optimización antes del procedimiento.";
+    case "DASI":{const m=dasiMets();
+      if(m>=10)return `${m.toFixed(1)} METs · capacidad funcional excelente; tolera bien el estrés quirúrgico.`;
+      if(m>=4)return `${m.toFixed(1)} METs · capacidad adecuada (≥4); no requiere pruebas cardíacas por capacidad.`;
+      return `${m.toFixed(1)} METs · capacidad limitada (<4); valorar pruebas si modifican la conducta.`;}
+    case "ARISCAT":
+      if(t<26)return "Riesgo pulmonar bajo (~1.6%); medidas estándar.";
+      if(t<45)return "Riesgo pulmonar intermedio (~13%); espirometría incentiva, expansión pulmonar y movilización.";
+      return "Riesgo pulmonar alto (~42%); ventilación protectora, fisioterapia respiratoria y vigilancia.";
+    case "Caprini":{let lvl,prof;
+      if(t===0){lvl="Riesgo muy bajo de TVP";prof="deambulación temprana.";}
+      else if(t<=2){lvl="Riesgo bajo de TVP";prof="profilaxis mecánica (CNI/MECG).";}
+      else if(t<=4){lvl="Riesgo moderado de TVP";prof="profilaxis mecánica ± farmacológica.";}
+      else{lvl="Riesgo alto de TVP";prof="profilaxis farmacológica + mecánica.";}
+      return `${lvl}; ${prof}`;}
+    case "Wells":
+      if(t>=3)return "Probabilidad ALTA de TVP; ecografía Doppler venosa.";
+      if(t>=1)return "Probabilidad moderada; considerar dímero-D o ecografía.";
+      return "Probabilidad baja de TVP.";
+    case "STOP-BANG":
+      if(t>=5)return "Riesgo alto de SAOS; precaución con opioides, oximetría postoperatoria, considerar CPAP.";
+      if(t>=3)return "Riesgo intermedio de SAOS; vigilancia respiratoria postoperatoria.";
+      return "Riesgo bajo de SAOS.";
+    case "mFI-5":
+      if(t===0)return "No frágil; buena reserva fisiológica.";
+      if(t===1)return "Pre-frágil; vigilancia y optimización.";
+      if(t===2)return "Frágil; prehabilitación y consentimiento reforzado.";
+      return "Fragilidad grave; alto riesgo de complicaciones, estancia prolongada y egreso no rutinario.";
+    case "CFS":{const v=parseInt(val("cfs_sel"));if(!v)return "Sin evaluar.";
+      if(v<=3)return "No frágil; buena reserva.";
+      if(v===4)return "Vulnerable; vigilancia.";
+      return "Frágil; valoración geriátrica, optimización y consentimiento reforzado.";}
+    case "Charlson":
+      if(t===0)return "Sin comorbilidad relevante.";
+      if(t<=2)return "Comorbilidad baja.";
+      if(t<=4)return "Comorbilidad moderada; optimización médica.";
+      return "Comorbilidad alta; impacto pronóstico, considerar nivel de cuidados postoperatorios.";
+    case "Apfel":
+      if(t<=1)return "Riesgo bajo de NVPO; profilaxis no rutinaria.";
+      if(t===2)return "Riesgo moderado de NVPO; 1-2 antieméticos.";
+      return "Riesgo alto de NVPO; profilaxis multimodal (2+ antieméticos de distinta clase).";
+    case "ASA":{const a=val("asa_sel");const map={"ASA I":"Paciente sano.","ASA II":"Enfermedad sistémica leve, controlada.","ASA III":"Enfermedad sistémica grave, no incapacitante.","ASA IV":"Enfermedad sistémica grave con amenaza vital constante.","ASA V":"Moribundo; escasa probabilidad de sobrevivir sin cirugía.","ASA VI":"Muerte cerebral (donante de órganos)."};return map[a]||"Sin clasificar.";}
+  }
+  return "";
+}
+function scoreDisplay(name){ // puntaje mostrado
+  if(name==="CFS"){const v=val("cfs_sel");return v?v:"—";}
+  if(name==="ASA"){return val("asa_sel")||"—";}
+  if(name==="DASI"){return dasiMets().toFixed(1);}
+  return scoreTotal(name);
+}
+function relevance(name){
+  const idx=TIPOS.indexOf(val("tipo"));if(idx<0)return "O";
+  return (REL[name]||[])[idx]||"O";
+}
+
+/* ================= CALC & RENDER ================= */
+function onTipoChange(){
+  // auto-set cirugía alto riesgo RCRI
+  setChk("rcri_hr",HIRISK.has(val("tipo")));
+  calc();
+}
+function calc(){
+  // reflejar autos en checkboxes visibles
+  SCORE_ORDER.forEach(name=>{
+    const def=SCORES[name];if(!def||!def.items)return;
+    def.items.forEach(it=>{
+      if(it.auto && autoPts(it.auto)===null){ // binarios
+        setChk(it.id,autoState(it.auto));
+      }
+    });
+  });
+  // antropometría hint
+  const b=imc(),s=sct(),r=rt24(),pk=pesoKg();
+  document.getElementById("antropo_hint").textContent=
+    (pk!==null?`Peso ${pk.toFixed(1)} kg · `:"")+(b!==null?`IMC ${b.toFixed(1)} · `:"")+
+    (s!==null?`SC ${s.toFixed(2)} m² · `:"")+(r!==null?`Req 24h ${Math.round(r)} ml`:"");
+  // score badges/totales/interp
+  SCORE_ORDER.forEach(name=>{
+    const tot=document.getElementById("tot_"+name);
+    if(tot)tot.textContent=scoreDisplay(name);
+    const bd=document.getElementById("badge_"+name);
+    if(bd){const rel=relevance(name);
+      bd.textContent=rel==="P"?"⭐ Prioritario":(rel==="N"?"No aplica":"Opcional");
+      bd.className="badge "+(rel==="P"?"b-pri":(rel==="N"?"b-na":"b-opt"));}
+    const ip=document.getElementById("interp_"+name);
+    if(ip)ip.textContent=interp(name);
+  });
+  if(presetMode!=="custom")applyPreset();
+  render();
+}
+
+function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function orDash(s){s=(s||"").trim();return s?esc(s):"—";}
+
+function suggestions(){
+  const out=[];
+  if(dasiMets()<4)out.push("Capacidad funcional <4 METs: valorar pruebas cardíacas (ecocardiograma/prueba de estrés) si modifican la conducta.");
+  if(scoreTotal("RCRI")>=2)out.push("RCRI elevado: optimización cardiológica, considerar biomarcadores (BNP/troponina) y monitoreo cardíaco.");
+  const at=scoreTotal("ARISCAT");
+  if(at>=45)out.push("ARISCAT alto: espirometría incentiva, ventilación protectora y monitoreo respiratorio postoperatorio.");
+  else if(at>=26)out.push("ARISCAT intermedio: técnicas de expansión pulmonar y movilización temprana.");
+  const ct=scoreTotal("Caprini");
+  if(ct>=3)out.push("Tromboprofilaxis farmacológica + mecánica (Caprini).");
+  else if(ct>=1)out.push("Profilaxis mecánica de TVP (compresión neumática intermitente o medias de compresión graduada).");
+  const sb=scoreTotal("STOP-BANG");
+  if(sb>=5)out.push("Alto riesgo de SAOS: precaución con opioides, oximetría postoperatoria, considerar CPAP.");
+  else if(sb>=3)out.push("Riesgo intermedio de SAOS: vigilancia respiratoria postoperatoria.");
+  if(scoreTotal("mFI-5")>=2)out.push("Fragilidad (mFI-5 ≥2): prehabilitación, optimización nutricional y consentimiento reforzado.");
+  if(scoreTotal("Apfel")>=3)out.push("Apfel ≥3: profilaxis multimodal de NVPO (2+ antieméticos de distinta clase).");
+  if(scoreTotal("Charlson")>=5)out.push("Comorbilidad alta (Charlson ≥5): optimización médica y considerar nivel de cuidados postoperatorios.");
+  const r=rt24();if(r!==null)out.push(`Terapia hídrica basal: ${Math.round(r)} ml/24h (Holliday-Segar). Ajustar a pérdidas quirúrgicas y estado clínico.`);
+  return out;
+}
+
+function render(){
+  // recSuggest
+  const sug=suggestions();
+  document.getElementById("recSuggest").innerHTML =
+    sug.length? sug.map(s=>`<div class="rec-suggest">• ${esc(s)}</div>`).join("")
+              : `<div style="font-size:11px;color:var(--muted);font-style:italic">Se generarán al calcular los scores.</div>`;
+  // compile recommendations
+  let recs=[...sug];
+  REC_BANK.forEach((t,i)=>{if(chk("rb_"+i))recs.push(t);});
+  const free=val("recFree");
+  if(free)free.split(/\n+/).forEach(l=>{if(l.trim())recs.push(l.trim());});
+  // dedup preserving order
+  recs=[...new Set(recs)];
+
+  // ---- build note ----
+  const tipo=val("tipo");
+  const prof=PROF[tipo]||PROF["Otra/General"];
+  const elevated = scoreTotal("RCRI")>=2 || /Alto/.test(val("riesgoq"));
+  const mets=dasiMets();
+  let algo,algoClass;
+  if(!elevated){algo="Riesgo bajo de MACE (<1%): no se requieren pruebas cardíacas adicionales — proceder a cirugía (Clase III:NB).";algoClass="low";}
+  else if(mets>=10){algo="Riesgo elevado, capacidad funcional excelente (>10 METs): proceder sin pruebas adicionales (Clase IIa).";algoClass="low";}
+  else if(mets>=4){algo="Riesgo elevado, capacidad funcional adecuada (≥4 METs): proceder sin pruebas adicionales (Clase IIb).";algoClass="low";}
+  else {algo="Riesgo elevado, capacidad <4 METs o desconocida: considerar prueba de estrés farmacológico SI cambia la conducta (Clase IIa). Si normal → proceder; si anormal → revascularización según guías (Clase I).";algoClass="high";}
+
+  const fecha=val("fecha");
+  const svLine=`PA: ${orDash(val("v_pa"))} mmHg&nbsp;&nbsp; FC: ${orDash(val("v_fc"))} lpm&nbsp;&nbsp; FR: ${orDash(val("v_fr"))} rpm&nbsp;&nbsp; T: ${orDash(val("v_temp"))} °C&nbsp;&nbsp; SatO₂: ${orDash(val("v_sat"))} %`;
+  const b=imc(),s=sct(),pk=pesoKg();
+  const antroLine=`Peso: ${pk!==null?pk.toFixed(1):"—"} kg&nbsp;&nbsp; Talla: ${orDash(val("talla"))} cm&nbsp;&nbsp; IMC: ${b!==null?b.toFixed(1):"—"} kg/m²`;
+
+  const included=SCORE_ORDER.filter(name=>{const inc=document.getElementById("inc_"+name);return inc?inc.checked:true;});
+  const riskRows=included.length? included.map(name=>{
+    const rel=relevance(name);
+    const relTxt=rel==="P"?"⭐ Prioritario":(rel==="N"?"No aplica":"Opcional");
+    const relCls=rel==="P"?"pri":(rel==="N"?"na":"opt");
+    const rowCls=rel==="N"?"na-row":"";
+    return `<tr class="${rowCls}"><td class="lab-sm">${name}</td>
+      <td style="text-align:center;font-weight:700">${scoreDisplay(name)}</td>
+      <td>${esc(interp(name))}</td><td class="${relCls}">${relTxt}</td></tr>`;
+  }).join("") : `<tr><td colspan="4" style="text-align:center;color:#999;font-style:italic">Sin escalas seleccionadas para la nota.</td></tr>`;
+
+  const labVal=(id)=>{const v=val(id);return v?esc(v):"—";};
+
+  const note=`
+  <h1>NOTA DE VALORACIÓN PREOPERATORIA</h1>
+  <div class="frame">La presente valoración no constituye una autorización ni una contraindicación para el acto quirúrgico. Es una evaluación integral que establece el riesgo quirúrgico estimado y ofrece sugerencias orientadas a atenuar los factores de riesgo modificables. La decisión final corresponde al equipo quirúrgico y anestésico.</div>
+
+  <h2>Datos del paciente</h2>
+  <table><tr><td class="lab">Nombre</td><td colspan="3">${orDash(val("nombre"))}</td></tr>
+  <tr><td class="lab">Fecha</td><td>${fecha?esc(fecha):"—"}</td><td class="lab">Edad</td><td>${orDash(val("edad"))} años</td></tr>
+  <tr><td class="lab">Estado civil</td><td>${orDash(val("civil"))}</td><td class="lab">Religión</td><td>${orDash(val("religion"))}</td></tr></table>
+
+  <h2>Cirugía planeada</h2>
+  <table><tr><td class="lab">Procedimiento</td><td colspan="3">${orDash(val("proc"))}</td></tr>
+  <tr><td class="lab">Tipo</td><td>${esc(tipo)}</td><td class="lab">Riesgo quirúrgico</td><td>${orDash(val("riesgoq"))}</td></tr></table>
+
+  <h2>Antecedentes patológicos</h2>
+  <table><tr><td class="lab">Médicos</td><td colspan="3">${orDash(val("a_med"))}</td></tr>
+  <tr><td class="lab">Quirúrgicos</td><td colspan="3">${orDash(val("a_qx"))}</td></tr>
+  <tr><td class="lab">Traumatológicos</td><td colspan="3">${orDash(val("a_trauma"))}</td></tr>
+  <tr><td class="lab">Alérgicos</td><td colspan="3">${orDash(val("a_alerg"))}</td></tr>
+  <tr><td class="lab">Gineco-obstétricos</td><td colspan="3">${orDash(val("a_go"))}</td></tr>
+  <tr><td class="lab">Medicación</td><td colspan="3">${orDash(val("a_med_act"))}</td></tr></table>
+
+  <h2>Hábitos y estilo de vida</h2>
+  <table><tr><td class="lab">Ejercicio</td><td colspan="3">${orDash(val("h_ej"))}</td></tr>
+  <tr><td class="lab">Alcohol</td><td>${orDash(val("h_alc"))}</td><td class="lab">Tabaco</td><td>${orDash(val("h_tab"))}</td></tr></table>
+
+  <h2>Examen físico</h2>
+  <table><tr><td class="lab">Signos vitales</td><td colspan="3">${svLine}</td></tr>
+  <tr><td class="lab">Antropometría</td><td colspan="3">${antroLine}</td></tr>
+  <tr><td class="lab">Estado general</td><td colspan="3">${orDash(val("ef_gen"))}</td></tr>
+  <tr><td class="lab">Cabeza y cuello</td><td colspan="3">${orDash(val("ef_cab"))}</td></tr>
+  <tr><td class="lab">Tórax</td><td colspan="3">${orDash(val("ef_tor"))}</td></tr>
+  <tr><td class="lab">Abdomen</td><td colspan="3">${orDash(val("ef_abd"))}</td></tr>
+  <tr><td class="lab">Extremidades</td><td colspan="3">${orDash(val("ef_ext"))}</td></tr>
+  <tr><td class="lab">Neurológico</td><td colspan="3">${orDash(val("ef_neuro"))}</td></tr>
+  <tr><td class="lab">Piel y faneras</td><td colspan="3">${orDash(val("ef_piel"))}</td></tr></table>
+
+  <h2>Estudios complementarios</h2>
+  <table><tr><td class="lab">EKG</td><td colspan="3">${orDash(val("ekg"))}</td></tr>
+  <tr><td class="lab">Rx tórax</td><td colspan="3">${orDash(val("rx"))}</td></tr>
+  <tr><td class="lab-sm">WBC</td><td>${labVal("l_wbc")}</td><td class="lab-sm">Creatinina</td><td>${labVal("l_cr")}</td></tr>
+  <tr><td class="lab-sm">Hemoglobina</td><td>${labVal("l_hb")}</td><td class="lab-sm">BUN</td><td>${labVal("l_bun")}</td></tr>
+  <tr><td class="lab-sm">Hematocrito</td><td>${labVal("l_hto")}</td><td class="lab-sm">Glucosa</td><td>${labVal("l_glu")}</td></tr>
+  <tr><td class="lab-sm">Plaquetas</td><td>${labVal("l_plt")}</td><td class="lab-sm">Sodio</td><td>${labVal("l_na")}</td></tr>
+  <tr><td class="lab-sm">Neutrófilos</td><td>${labVal("l_neu")}</td><td class="lab-sm">Potasio</td><td>${labVal("l_k")}</td></tr>
+  <tr><td class="lab-sm">Coagulación</td><td colspan="3">TP: ${orDash(val("l_tp"))} seg&nbsp;&nbsp; TPT: ${orDash(val("l_tpt"))} seg&nbsp;&nbsp; INR: ${orDash(val("l_inr"))}</td></tr></table>
+
+  <h2>Estratificación de riesgo e interpretación</h2>
+  <table class="risk-tbl"><tr><th>Escala</th><th style="text-align:center">Puntaje</th><th>Interpretación y conducta</th><th style="text-align:center">Relevancia</th></tr>
+  ${riskRows}</table>
+
+  <h2>Algoritmo cardíaco perioperatorio (ACC/AHA)</h2>
+  <div class="muted" style="margin-bottom:4px">¿Necesita estudios cardíacos antes de operar? (según RCRI + capacidad funcional)</div>
+  <div class="algo ${algoClass}">${esc(algo)}</div>
+
+  <h2>Profilaxis antibiótica sugerida</h2>
+  <table><tr><td class="lab">Elección</td><td>${esc(prof[0])}</td></tr>
+  <tr><td class="lab">Alternativa/Notas</td><td style="font-style:italic;color:#555">${esc(prof[1])}</td></tr></table>
+
+  <h2>Plan hídrico</h2>
+  <table><tr><td class="lab">Superficie corporal</td><td>${s!==null?s.toFixed(2)+" m²":"—"}</td>
+  <td class="lab">Req. 24 h</td><td>${rt24()!==null?Math.round(rt24())+" ml":"—"}</td></tr></table>
+
+  <h2>Recomendaciones</h2>
+  <div class="recs">${recs.length?recs.map(r=>"• "+esc(r)).join("\n"):"—"}</div>
+
+  <div class="sign"><div class="line"></div>
+    <div class="nm">Dr. Denis W. Cotzojay Pirir</div>
+    <div class="sm">Medicina Interna — Col. 14,986</div>
+    <div class="sm" style="font-style:italic">Clínica Médica Juan Ciudad Duarte</div>
+    <div class="sm" style="font-style:italic;font-size:9.5px">4a. Calle 6-39 zona 1 de Mixco · Tel. 5537 0427</div>
+  </div>`;
+  document.getElementById("note").innerHTML=note;
+  autosave();
+}
+
+/* ================= INTERACTIONS ================= */
+function toggleScore(name){document.getElementById("sc_"+name).classList.toggle("collapsed");}
+function collapseIrrelevant(){
+  SCORE_ORDER.forEach(name=>{
+    const sc=document.getElementById("sc_"+name);
+    if(relevance(name)==="N")sc.classList.add("collapsed");
+    else sc.classList.remove("collapsed");
+  });
+}
+
+/* ================= WORD EXPORT ================= */
+function downloadWord(){
+  const noteHTML=document.getElementById("note").innerHTML;
+  const style=`<style>
+    body{font-family:Arial,sans-serif;font-size:11pt;color:#000}
+    h1{font-size:15pt;text-align:center;background:#17324d;color:#fff;padding:8pt}
+    h2{font-size:11pt;text-transform:uppercase;color:#fff;background:#0e6b73;padding:3pt 6pt;margin:10pt 0 5pt}
+    .frame{font-size:9pt;font-style:italic;color:#555;background:#fbf3dc;padding:6pt}
+    table{width:100%;border-collapse:collapse;margin:3pt 0}
+    td{border:1px solid #b8c2ca;padding:3pt 5pt;font-size:10pt;vertical-align:top}
+    td.lab,td.lab-sm{background:#eef2f5;font-weight:bold}
+    th{background:#8ea9db;color:#fff;padding:3pt 5pt;border:1px solid #b8c2ca;font-size:9.5pt;text-align:left}
+    .pri{background:#e4f2ea;color:#2e7d4f;font-weight:bold;text-align:center}
+    .opt{text-align:center}.na{background:#eef1f4;color:#98a4b0;text-align:center;font-style:italic}
+    .algo{padding:6pt;font-size:10pt}.algo.low{background:#e4f2ea}.algo.high{background:#fbe4d8}
+    .recs{white-space:pre-wrap;font-size:10pt}
+    .sign{margin-top:26pt;text-align:center}.sign .line{border-top:1px solid #000;width:200pt;margin:0 auto 3pt}
+    .sign .nm{font-weight:bold}.sign .sm{font-size:9.5pt;color:#555}
+    .muted{color:#777;font-style:italic;font-size:9pt}
+  </style>`;
+  const pre="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'>"+style+"</head><body>";
+  const html=pre+noteHTML+"</body></html>";
+  const blob=new Blob(['\ufeff',html],{type:'application/msword'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const nm=(val("nombre")||"paciente").replace(/[^\wáéíóúñÁÉÍÓÚÑ ]/g,"").replace(/\s+/g,"_");
+  a.href=url;a.download="Preoperatorio_"+nm+".doc";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ================= PRESET DE ESCALAS ================= */
+let presetMode="solo_prio";
+function setPreset(mode){presetMode=mode;if(mode!=="custom")applyPreset();render();autosave();}
+function applyPreset(){
+  if(presetMode==="custom")return;
+  SCORE_ORDER.forEach(name=>{
+    const inc=document.getElementById("inc_"+name);if(!inc)return;
+    const rel=relevance(name);
+    inc.checked = presetMode==="todas" ? true
+                : presetMode==="prio_opt" ? (rel!=="N")
+                : (rel==="P");
+  });
+}
+function onIncToggle(){presetMode="custom";const p=document.getElementById("notePreset");if(p)p.value="custom";render();autosave();}
+
+/* ================= BORRADOR ACTUAL (autoguardado) ================= */
+function collectData(){
+  const d={fields:{},checks:{},preset:presetMode};
+  document.querySelectorAll("#formPane input, #formPane select, #formPane textarea").forEach(e=>{
+    if(!e.id)return;
+    if(e.type==="checkbox")d.checks[e.id]=e.checked;
+    else d.fields[e.id]=e.value;
+  });
+  return d;
+}
+function applyData(data){
+  if(!data)return;
+  for(const id in (data.fields||{})){const e=document.getElementById(id);if(e&&e.type!=="checkbox")e.value=data.fields[id];}
+  for(const id in (data.checks||{})){const e=document.getElementById(id);if(e&&e.type==="checkbox")e.checked=data.checks[id];}
+  if(data.preset){presetMode=data.preset;const p=document.getElementById("notePreset");if(p)p.value=data.preset;}
+  calc();
+}
+function autosave(){try{localStorage.setItem("preop_current",JSON.stringify(collectData()));}catch(e){}}
+let statusTimer=null;
+function setStatus(msg){const s=document.getElementById("status");if(!s)return;s.textContent=msg;
+  clearTimeout(statusTimer);statusTimer=setTimeout(()=>{s.textContent="";},2200);}
+function newPatient(){
+  if(confirm("¿Empezar una nota nueva? (Guarde antes el paciente actual si aún no lo ha hecho.)")){
+    try{localStorage.removeItem("preop_current");}catch(e){}
+    location.reload();
+  }
+}
+
+/* ================= BIBLIOTECA DE PACIENTES ================= */
+const LIB_KEY="preop_library";
+function getLibrary(){try{return JSON.parse(localStorage.getItem(LIB_KEY)||"[]");}catch(e){return [];}}
+function setLibrary(l){try{localStorage.setItem(LIB_KEY,JSON.stringify(l));}catch(e){alert("No se pudo guardar (almacenamiento lleno o restringido).");}}
+function slug(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
+
+function saveToLibrary(){
+  const nombre=val("nombre").trim();
+  if(!nombre){alert("Escriba el nombre del paciente antes de guardar.");return;}
+  const fechaEval=val("fecha")||new Date().toISOString().slice(0,10);
+  const lib=getLibrary();
+  const id=slug(nombre)+"__"+fechaEval;
+  const rec={id,nombre,fechaEval,savedAt:new Date().toISOString(),data:collectData()};
+  const idx=lib.findIndex(r=>r.id===id);
+  if(idx>=0){
+    if(!confirm("Ya existe una valoración de «"+nombre+"» con fecha "+fechaEval+". ¿Actualizarla?\n\n(Para conservar la anterior y crear una nueva —p. ej. control al año siguiente— cambie primero la Fecha.)"))return;
+    lib[idx]=rec;
+  } else lib.push(rec);
+  setLibrary(lib);
+  setStatus("Paciente guardado ✓");
+}
+function fmtDate(iso){try{return new Date(iso).toLocaleString("es-GT",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return iso;}}
+
+function openLibraryModal(){document.getElementById("libModal").classList.add("open");document.getElementById("libSearch").value="";renderLibrary();}
+function closeLibrary(){document.getElementById("libModal").classList.remove("open");}
+function renderLibrary(){
+  const q=slug(document.getElementById("libSearch").value);
+  let lib=getLibrary().sort((a,b)=> (b.savedAt||"").localeCompare(a.savedAt||""));
+  if(q)lib=lib.filter(r=>slug(r.nombre).includes(q));
+  const box=document.getElementById("libList");
+  if(!lib.length){box.innerHTML=`<div class="lib-empty">No hay pacientes guardados${q?" con ese nombre":""}.</div>`;return;}
+  box.innerHTML=lib.map(r=>`<div class="lib-row">
+    <div class="lib-info"><div class="lib-name">${esc(r.nombre)}</div>
+      <div class="lib-meta">Valoración: ${esc(r.fechaEval||"—")} · guardado ${fmtDate(r.savedAt)}</div></div>
+    <div class="lib-actions">
+      <button class="lib-open" onclick="loadRecord('${r.id}')">Abrir</button>
+      <button class="lib-del" onclick="deleteRecord('${r.id}')">Borrar</button>
+    </div></div>`).join("");
+}
+function loadRecord(id){
+  const rec=getLibrary().find(r=>r.id===id);if(!rec)return;
+  applyData(rec.data);closeLibrary();setStatus("Paciente cargado");
+}
+function deleteRecord(id){
+  if(!confirm("¿Borrar esta valoración guardada? Esta acción no se puede deshacer."))return;
+  setLibrary(getLibrary().filter(r=>r.id!==id));renderLibrary();
+}
+function exportLibrary(){
+  const lib=getLibrary();
+  if(!lib.length){alert("No hay pacientes para respaldar.");return;}
+  const blob=new Blob([JSON.stringify({library:lib,exported:new Date().toISOString()},null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=url;a.download="Biblioteca_preop_"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus("Biblioteca respaldada");
+}
+function importFileToLibrary(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const obj=JSON.parse(r.result);
+      const lib=getLibrary();
+      if(obj.library && Array.isArray(obj.library)){
+        // respaldo de biblioteca completa: fusionar
+        obj.library.forEach(rec=>{const i=lib.findIndex(x=>x.id===rec.id);if(i>=0)lib[i]=rec;else lib.push(rec);});
+        setLibrary(lib);renderLibrary();setStatus("Biblioteca importada ("+obj.library.length+")");
+      } else if(obj.fields){
+        // borrador individual (p. ej. del Google Form): cargar como paciente actual
+        applyData(obj);closeLibrary();setStatus("Datos importados");
+      } else {alert("El archivo no tiene un formato reconocido.");}
+    }catch(e){alert("El archivo no es válido.");}
+  };
+  r.readAsText(f);ev.target.value="";
+}
+
+/* ================= INIT ================= */
+buildTipos();buildScores();buildRecBank();
+(function(){
+  let restored=false;
+  try{const saved=localStorage.getItem("preop_current");
+    if(saved){applyData(JSON.parse(saved));restored=true;}
+  }catch(e){}
+  if(!restored){
+    document.getElementById("fecha").value=new Date().toISOString().slice(0,10);
+    applyPreset();
+    calc();
+  }
+})();
+</script>
+</body>
+</html>
