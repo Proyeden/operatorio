@@ -161,6 +161,7 @@
   .note .na-row td{color:#b3bcc4}
   .note .algo{padding:9px 11px;border-radius:5px;font-size:11.5px;line-height:1.5}
   .note .algo.low{background:#e4f2ea;color:#2b5e3f}
+  .note .algo.mid{background:#fbf1dd;color:#7a5a12}
   .note .algo.high{background:#fbe4d8;color:#8a3b16;font-weight:600}
   .note .recs{white-space:pre-wrap;font-size:11.5px;line-height:1.55;padding:8px 4px}
   .note .sign{margin-top:34px;text-align:center}
@@ -293,6 +294,15 @@
         <div class="field"><label>TPT (seg)</label><input id="l_tpt" oninput="render()"></div>
         <div class="field"><label>INR</label><input id="l_inr" oninput="render()"></div>
       </div>
+      <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin:8px 0 4px">
+        BIOMARCADORES CARDÍACOS <span style="font-weight:400;font-style:italic;color:var(--muted)">— opcionales; útiles en riesgo elevado (AHA/ACC 2024)</span></div>
+      <div class="grid3">
+        <div class="field"><label>NT-proBNP (ng/L)</label><input id="l_ntprobnp" oninput="calc()"></div>
+        <div class="field"><label>BNP (ng/L)</label><input id="l_bnp" oninput="calc()"></div>
+        <div class="field"><label>Troponina</label><select id="l_tn" onchange="calc()">
+          <option value="">—</option><option>Normal</option><option>Elevada (&gt;p99)</option></select></div>
+      </div>
+      <div class="hint" id="biomark_hint"></div>
     </div></div>
 
     <div class="card"><h2>Escalas de riesgo</h2>
@@ -349,6 +359,7 @@ const TIPOS = ["Oftalmológica","Dermatológica/plástica menor","Endoscopía co
 
 const REL = {
  "RCRI":     ["N","N","O","O","O","P","P","P","O","O","P","P","P","P","P","P","P"],
+ "AUB-HAS2": ["N","N","O","O","O","O","O","O","O","O","P","P","P","P","P","O","O"],
  "Detsky":   ["N","N","N","O","O","O","O","O","O","O","O","O","O","O","P","O","O"],
  "DASI":     ["N","N","O","O","O","P","P","P","O","O","P","O","P","P","P","P","O"],
  "ARISCAT":  ["N","N","O","O","O","P","P","O","O","O","P","P","O","P","P","P","P"],
@@ -464,6 +475,14 @@ const SCORES = {
    {id:"ch16",label:"Linfoma",pts:2},{id:"ch17",label:"Enf. hepática moderada-grave",pts:3},
    {id:"ch18",label:"Tumor sólido metastásico",pts:6},{id:"ch19",label:"SIDA",pts:6},
  ]},
+ "AUB-HAS2":{title:"AUB-HAS2 — índice cardiovascular",items:[
+   {id:"au_age",label:"Edad ≥ 75 años (auto)",pts:1,auto:"age75"},
+   {id:"au_hd",label:"Antecedente de cardiopatía",pts:1},
+   {id:"au_sx",label:"Síntomas de angina o disnea",pts:1},
+   {id:"au_hb",label:"Hemoglobina < 12 g/dl (auto)",pts:1,auto:"hb12"},
+   {id:"au_vasc",label:"Cirugía vascular (auto por tipo)",pts:1,auto:"vascular"},
+   {id:"au_emerg",label:"Cirugía de emergencia",pts:1},
+ ]},
  "Wells":{title:"Wells — probabilidad de TVP",items:[
    {id:"w1",label:"Cáncer activo",pts:1},{id:"w2",label:"Parálisis/inmovilización de MI",pts:1},
    {id:"w3",label:"Encamado >3 d o cirugía mayor <12 sem",pts:1},{id:"w4",label:"Dolor en trayecto venoso profundo",pts:1},
@@ -472,23 +491,34 @@ const SCORES = {
    {id:"w9",label:"Antecedente de TVP previa",pts:1},{id:"w10",label:"Diagnóstico alternativo ≥ probable",pts:-2},
  ]},
 };
-const SCORE_ORDER=["RCRI","Detsky","DASI","ARISCAT","Caprini","Wells","STOP-BANG","mFI-5","CFS","Charlson","Apfel","ASA"];
+const SCORE_ORDER=["RCRI","AUB-HAS2","Detsky","DASI","ARISCAT","Caprini","Wells","STOP-BANG","mFI-5","CFS","Charlson","Apfel","ASA"];
 
 const REC_BANK=[
 "Tiempo quirúrgico corto.","Movilización temprana postoperatoria.",
 "Ayuno según protocolo ERAS (líquidos claros hasta 2 h antes).",
-"Llevar a sala con PA < 140/90 mmHg y evitar hipotensión sostenida (PAM < 65 mmHg).",
+"Suspender inhibidores de SGLT2 (empagliflozina, dapagliflozina, canagliflozina) 3-4 días antes de la cirugía por riesgo de cetoacidosis euglucémica perioperatoria.",
+"Continuar el tratamiento antihipertensivo crónico en el perioperatorio; evitar suspensión abrupta de betabloqueadores o clonidina por rebote.",
+"Suspender IECA/ARA-II la mañana de la cirugía por riesgo de hipotensión intraoperatoria; reiniciarlos tan pronto sea clínicamente razonable.",
+"Evitar hipotensión intraoperatoria sostenida (mantener PAM ≥ 60-65 mmHg o PAS > 90 mmHg).",
+"No diferir la cirugía por cifras aisladas de presión arterial < 180/110 mmHg en ausencia de daño agudo de órgano blanco.",
+"Continuar estatinas en el perioperatorio.",
+"Continuar la terapia médica dirigida por guías (GDMT) de insuficiencia cardíaca; no suspenderla sin indicación específica.",
+"No iniciar betabloqueadores de novo el día de la cirugía.",
 "Monitoreo continuo de signos vitales transoperatorio y en la primera hora postoperatoria.",
+"Vigilancia de troponina postoperatoria (24-48 h) por riesgo de lesión miocárdica tras cirugía no cardíaca (MINS) en pacientes de riesgo elevado.",
+"Vigilar aparición de fibrilación auricular perioperatoria; si se presenta, seguimiento estrecho por riesgo aumentado de ACV.",
 "Profilaxis mecánica de TVP con compresión neumática intermitente o medias de compresión graduada.",
 "Profilaxis antibiótica con cefazolina 2 g IV 30 min antes de incisión; repetir si cirugía > 4 h.",
-"Continuar antihipertensivos el día de la cirugía (excepto IECA/ARA-II según protocolo).",
 "Control glucémico perioperatorio (meta 140-180 mg/dl).",
-"Manejo de anticoagulación/antiagregación según riesgo trombótico y hemorrágico.",
+"Manejo de anticoagulación según riesgo trombótico y hemorrágico; el puenteo (bridging) solo en pacientes de muy alto riesgo trombótico, no de rutina.",
+"Manejo de antiagregación según tiempo desde la revascularización coronaria y riesgo hemorrágico.",
 "Analgesia multimodal, minimizar opioides.","Profilaxis de náusea y vómito postoperatorio (NVPO).",
 "Normotermia perioperatoria activa.","Optimización de hemoglobina preoperatoria si anemia.",
 "Reservar hemoderivados / pruebas cruzadas según sangrado esperado.",
 "Interconsulta a cardiología.","Interconsulta a neumología.",
-"Consentimiento informado reforzado (riesgo elevado).",
+"Manejo en equipo multidisciplinario (cirugía, anestesia, cardiología).",
+"Prehabilitación (acondicionamiento físico y soporte nutricional) antes de la cirugía.",
+"Consentimiento informado reforzado y discusión de metas de cuidado (riesgo elevado / fragilidad).",
 "Planificar cama de cuidados intermedios / UCI postoperatoria.",
 ];
 
@@ -583,6 +613,9 @@ function autoState(id){
     case "crea": return cr!==null && cr>2;
     case "age70": return edad!==null && edad>70;
     case "age50": return edad!==null && edad>50;
+    case "age75": return edad!==null && edad>=75;
+    case "hb12": return hb!==null && hb<12;
+    case "vascular": return tipo==="Vascular mayor";
     case "male": return sexo==="Masculino";
     case "female": return sexo==="Femenino";
     case "imc25": return bmi!==null && bmi>25;
@@ -628,10 +661,14 @@ function interp(name){
       if(t<=15)return "Clase I · riesgo cardíaco bajo (<6%).";
       if(t<=30)return "Clase II · riesgo intermedio; valoración cardiológica previa.";
       return "Clase III · riesgo alto; optimización antes del procedimiento.";
-    case "DASI":{const m=dasiMets();
-      if(m>=10)return `${m.toFixed(1)} METs · capacidad funcional excelente; tolera bien el estrés quirúrgico.`;
-      if(m>=4)return `${m.toFixed(1)} METs · capacidad adecuada (≥4); no requiere pruebas cardíacas por capacidad.`;
-      return `${m.toFixed(1)} METs · capacidad limitada (<4); valorar pruebas si modifican la conducta.`;}
+    case "AUB-HAS2":
+      if(t<=1)return "Riesgo bajo de muerte, IAM o ACV a 30 días.";
+      if(t<=3)return "Riesgo intermedio a 30 días; considerar optimización y biomarcadores.";
+      return "Riesgo alto a 30 días; manejo multidisciplinario y vigilancia estrecha.";
+    case "DASI":{const m=dasiMets(), raw=scoreTotal("DASI");
+      if(raw<=34)return `${raw.toFixed(1)} pts DASI (${m.toFixed(1)} METs) · capacidad limitada (DASI ≤34 se asocia a mayor riesgo de muerte/IAM a 30 días).`;
+      if(m>=10)return `${raw.toFixed(1)} pts DASI (${m.toFixed(1)} METs) · capacidad funcional excelente; tolera bien el estrés quirúrgico.`;
+      return `${raw.toFixed(1)} pts DASI (${m.toFixed(1)} METs) · capacidad adecuada (>34 pts, ≥4 METs); sin pruebas cardíacas por capacidad.`;}
     case "ARISCAT":
       if(t<26)return "Riesgo pulmonar bajo (~1.6%); medidas estándar.";
       if(t<45)return "Riesgo pulmonar intermedio (~13%); espirometría incentiva, expansión pulmonar y movilización.";
@@ -658,7 +695,7 @@ function interp(name){
     case "CFS":{const v=parseInt(val("cfs_sel"));if(!v)return "Sin evaluar.";
       if(v<=3)return "No frágil; buena reserva.";
       if(v===4)return "Vulnerable; vigilancia.";
-      return "Frágil; valoración geriátrica, optimización y consentimiento reforzado.";}
+      return "Frágil (CFS 5-8); mayor mortalidad y complicaciones a 30 días. Considerar prehabilitación, valoración geriátrica y decisión compartida sobre metas de cuidado.";}
     case "Charlson":
       if(t===0)return "Sin comorbilidad relevante.";
       if(t<=2)return "Comorbilidad baja.";
@@ -701,6 +738,17 @@ function calc(){
   });
   // antropometría hint
   const b=imc(),s=sct(),r=rt24(),pk=pesoKg();
+  const _ntp=num("l_ntprobnp"),_bnp=num("l_bnp"),_tn=val("l_tn");
+  const bh=document.getElementById("biomark_hint");
+  if(bh){
+    let msg="";
+    if(_ntp!==null||_bnp!==null||_tn!==""){
+      const anor=(_ntp!==null&&_ntp>=300)||(_bnp!==null&&_bnp>92)||(_tn==="Elevada (>p99)");
+      msg=anor?"⚠ Biomarcador anormal (NT-proBNP ≥300 ng/L · BNP >92 ng/L · troponina >p99).":
+               "Biomarcadores dentro de umbrales normales (alto valor predictivo negativo).";
+    }
+    bh.textContent=msg;
+  }
   document.getElementById("antropo_hint").textContent=
     (pk!==null?`Peso ${pk.toFixed(1)} kg · `:"")+(b!==null?`IMC ${b.toFixed(1)} · `:"")+
     (s!==null?`SC ${s.toFixed(2)} m² · `:"")+(r!==null?`Req 24h ${Math.round(r)} ml`:"");
@@ -724,8 +772,20 @@ function orDash(s){s=(s||"").trim();return s?esc(s):"—";}
 
 function suggestions(){
   const out=[];
-  if(dasiMets()<4)out.push("Capacidad funcional <4 METs: valorar pruebas cardíacas (ecocardiograma/prueba de estrés) si modifican la conducta.");
-  if(scoreTotal("RCRI")>=2)out.push("RCRI elevado: optimización cardiológica, considerar biomarcadores (BNP/troponina) y monitoreo cardíaco.");
+  const rcriT=scoreTotal("RCRI"), aubT=scoreTotal("AUB-HAS2");
+  const elevated = rcriT>1 || /Alto/.test(val("riesgoq")) || aubT>=2;
+  const dasiRaw=scoreTotal("DASI"), mets=dasiMets();
+  const capLimitada=(dasiRaw<=34)||(mets<4);
+  const ntp=num("l_ntprobnp"), bnp=num("l_bnp"), tn=val("l_tn");
+  const bioHecho=(ntp!==null||bnp!==null||tn!==""), bioAnormal=(ntp!==null&&ntp>=300)||(bnp!==null&&bnp>92)||(tn==="Elevada (>p99)");
+  if(elevated && capLimitada && !bioHecho)
+    out.push("Riesgo elevado con capacidad funcional limitada: es razonable medir NT-proBNP/BNP ± troponina antes de considerar pruebas de imagen (AHA/ACC 2024, Clase 2a).");
+  if(elevated && bioAnormal)
+    out.push("Biomarcadores elevados: vigilancia de troponina postoperatoria (24-48 h) por riesgo de lesión miocárdica tras cirugía no cardíaca (MINS) y manejo en equipo multidisciplinario.");
+  if(elevated && !capLimitada)
+    out.push("Riesgo elevado con capacidad funcional adecuada: proceder sin pruebas cardíacas adicionales; optimizar tratamiento médico dirigido por guías.");
+  if(!elevated)
+    out.push("Riesgo bajo: no se requieren pruebas cardíacas preoperatorias adicionales (evitar sobreestudio y retrasos innecesarios).");
   const at=scoreTotal("ARISCAT");
   if(at>=45)out.push("ARISCAT alto: espirometría incentiva, ventilación protectora y monitoreo respiratorio postoperatorio.");
   else if(at>=26)out.push("ARISCAT intermedio: técnicas de expansión pulmonar y movilización temprana.");
@@ -735,9 +795,14 @@ function suggestions(){
   const sb=scoreTotal("STOP-BANG");
   if(sb>=5)out.push("Alto riesgo de SAOS: precaución con opioides, oximetría postoperatoria, considerar CPAP.");
   else if(sb>=3)out.push("Riesgo intermedio de SAOS: vigilancia respiratoria postoperatoria.");
-  if(scoreTotal("mFI-5")>=2)out.push("Fragilidad (mFI-5 ≥2): prehabilitación, optimización nutricional y consentimiento reforzado.");
+  const cfsV=parseInt(val("cfs_sel"))||0;
+  if(scoreTotal("mFI-5")>=2 || cfsV>=5)
+    out.push("Fragilidad: prehabilitación (acondicionamiento y soporte nutricional), valoración geriátrica y decisión compartida sobre metas de cuidado.");
   if(scoreTotal("Apfel")>=3)out.push("Apfel ≥3: profilaxis multimodal de NVPO (2+ antieméticos de distinta clase).");
   if(scoreTotal("Charlson")>=5)out.push("Comorbilidad alta (Charlson ≥5): optimización médica y considerar nivel de cuidados postoperatorios.");
+  // SGLT2i — relevante en diabetes
+  if(chk("rcri_dm")||chk("m1")||chk("ch10")||chk("ch11"))
+    out.push("Si el paciente usa inhibidores de SGLT2 (empagliflozina, dapagliflozina, canagliflozina): suspenderlos 3-4 días antes de la cirugía por riesgo de cetoacidosis euglucémica perioperatoria (AHA/ACC 2024).");
   const r=rt24();if(r!==null)out.push(`Terapia hídrica basal: ${Math.round(r)} ml/24h (Holliday-Segar). Ajustar a pérdidas quirúrgicas y estado clínico.`);
   return out;
 }
@@ -759,21 +824,40 @@ function render(){
   // ---- build note ----
   const tipo=val("tipo");
   const prof=PROF[tipo]||PROF["Otra/General"];
-  const elevated = scoreTotal("RCRI")>=2 || /Alto/.test(val("riesgoq"));
-  const mets=dasiMets();
+  // ---- Algoritmo escalonado AHA/ACC 2024 ----
+  const rcriT=scoreTotal("RCRI"), aubT=scoreTotal("AUB-HAS2");
+  // Riesgo elevado = RCRI >1 (≥2) o riesgo quirúrgico alto o AUB-HAS2 ≥2 (≥1% MACE)
+  const elevated = rcriT>1 || /Alto/.test(val("riesgoq")) || aubT>=2;
+  const mets=dasiMets(), dasiRaw=scoreTotal("DASI");
+  const capLimitada = (dasiRaw<=34) || (mets<4);
+  // Biomarcadores (umbrales 2024): NT-proBNP ≥300 ng/L, BNP >92 ng/L, troponina >p99
+  const ntp=num("l_ntprobnp"), bnp=num("l_bnp"), tn=val("l_tn");
+  const bioHecho = (ntp!==null || bnp!==null || tn!=="");
+  const bioAnormal = (ntp!==null && ntp>=300) || (bnp!==null && bnp>92) || (tn==="Elevada (>p99)");
   let algo,algoClass;
-  if(!elevated){algo="Riesgo bajo de MACE (<1%): no se requieren pruebas cardíacas adicionales — proceder a cirugía (Clase III:NB).";algoClass="low";}
-  else if(mets>=10){algo="Riesgo elevado, capacidad funcional excelente (>10 METs): proceder sin pruebas adicionales (Clase IIa).";algoClass="low";}
-  else if(mets>=4){algo="Riesgo elevado, capacidad funcional adecuada (≥4 METs): proceder sin pruebas adicionales (Clase IIb).";algoClass="low";}
-  else {algo="Riesgo elevado, capacidad <4 METs o desconocida: considerar prueba de estrés farmacológico SI cambia la conducta (Clase IIa). Si normal → proceder; si anormal → revascularización según guías (Clase I).";algoClass="high";}
+  if(!elevated){
+    algo="Paso 1-4 · Riesgo bajo de MACE (<1%): proceder a cirugía sin pruebas cardíacas adicionales (Clase III: sin beneficio). El sobrediagnóstico retrasa la cirugía sin mejorar desenlaces.";
+    algoClass="low";
+  } else if(!capLimitada){
+    algo="Paso 5 · Riesgo elevado con capacidad funcional adecuada (DASI >34 pts, ≥4 METs): proceder a cirugía sin pruebas adicionales. Optimizar GDMT y continuar tratamiento cardiovascular crónico.";
+    algoClass="low";
+  } else if(!bioHecho){
+    algo="Paso 5-6 · Riesgo elevado con capacidad limitada (DASI ≤34 o <4 METs): es razonable medir biomarcadores (NT-proBNP o BNP ± troponina) para afinar la estratificación antes de considerar imagen (Clase 2a). Ingrese el resultado para continuar el algoritmo.";
+    algoClass="mid";
+  } else if(!bioAnormal){
+    algo="Paso 6 · Riesgo elevado, capacidad limitada, biomarcadores normales: alto valor predictivo negativo — proceder a cirugía con GDMT optimizada y vigilancia de troponina postoperatoria (MINS).";
+    algoClass="low";
+  } else {
+    algo="Paso 6-7 · Riesgo elevado, capacidad limitada y biomarcadores ANORMALES: considerar prueba de estrés o angio-TC coronaria SOLO si se sospecha isquemia de alto riesgo (tronco común o multivaso con FE reducida) o existe indicación independiente de la cirugía (Clase 2b). La revascularización profiláctica de rutina NO reduce MACE. Manejo en equipo, GDMT y vigilancia estrecha de troponina postoperatoria.";
+    algoClass="high";
+  }
 
   const fecha=val("fecha");
   const svLine=`PA: ${orDash(val("v_pa"))} mmHg&nbsp;&nbsp; FC: ${orDash(val("v_fc"))} lpm&nbsp;&nbsp; FR: ${orDash(val("v_fr"))} rpm&nbsp;&nbsp; T: ${orDash(val("v_temp"))} °C&nbsp;&nbsp; SatO₂: ${orDash(val("v_sat"))} %`;
   const b=imc(),s=sct(),pk=pesoKg();
   const antroLine=`Peso: ${pk!==null?pk.toFixed(1):"—"} kg&nbsp;&nbsp; Talla: ${orDash(val("talla"))} cm&nbsp;&nbsp; IMC: ${b!==null?b.toFixed(1):"—"} kg/m²`;
 
-  const included=SCORE_ORDER.filter(name=>{const inc=document.getElementById("inc_"+name);return inc?inc.checked:true;});
-  const riskRows=included.length? included.map(name=>{
+  const included=SCORE_ORDER.filter(name=>{const inc=document.getElementById("inc_"+name);return inc?inc.checked:true;});  const riskRows=included.length? included.map(name=>{
     const rel=relevance(name);
     const relTxt=rel==="P"?"⭐ Prioritario":(rel==="N"?"No aplica":"Opcional");
     const relCls=rel==="P"?"pri":(rel==="N"?"na":"opt");
@@ -835,8 +919,8 @@ function render(){
   <table class="risk-tbl"><tr><th>Escala</th><th style="text-align:center">Puntaje</th><th>Interpretación y conducta</th><th style="text-align:center">Relevancia</th></tr>
   ${riskRows}</table>
 
-  <h2>Algoritmo cardíaco perioperatorio (ACC/AHA)</h2>
-  <div class="muted" style="margin-bottom:4px">¿Necesita estudios cardíacos antes de operar? (según RCRI + capacidad funcional)</div>
+  <h2>Algoritmo cardíaco perioperatorio (AHA/ACC 2024)</h2>
+  <div class="muted" style="margin-bottom:4px">Enfoque escalonado AHA/ACC 2024: riesgo calculado → capacidad funcional (DASI) → biomarcadores → imagen selectiva</div>
   <div class="algo ${algoClass}">${esc(algo)}</div>
 
   <h2>Profilaxis antibiótica sugerida</h2>
@@ -855,6 +939,7 @@ function render(){
     <div class="sm">Medicina Interna — Col. 14,986</div>
     <div class="sm" style="font-style:italic">Clínica Médica Juan Ciudad Duarte</div>
     <div class="sm" style="font-style:italic;font-size:9.5px">4a. Calle 6-39 zona 1 de Mixco · Tel. 5537 0427</div>
+    <div class="muted" style="margin-top:10px;font-size:9px;text-align:left">Escalas y conductas orientadas por la «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442), que sustituye a la guía de 2014. Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
   </div>`;
   document.getElementById("note").innerHTML=note;
   autosave();
@@ -884,7 +969,7 @@ function downloadWord(){
     th{background:#8ea9db;color:#fff;padding:3pt 5pt;border:1px solid #b8c2ca;font-size:9.5pt;text-align:left}
     .pri{background:#e4f2ea;color:#2e7d4f;font-weight:bold;text-align:center}
     .opt{text-align:center}.na{background:#eef1f4;color:#98a4b0;text-align:center;font-style:italic}
-    .algo{padding:6pt;font-size:10pt}.algo.low{background:#e4f2ea}.algo.high{background:#fbe4d8}
+    .algo{padding:6pt;font-size:10pt}.algo.low{background:#e4f2ea}.algo.mid{background:#fbf1dd}.algo.high{background:#fbe4d8}
     .recs{white-space:pre-wrap;font-size:10pt}
     .sign{margin-top:26pt;text-align:center}.sign .line{border-top:1px solid #000;width:200pt;margin:0 auto 3pt}
     .sign .nm{font-weight:bold}.sign .sm{font-size:9.5pt;color:#555}
