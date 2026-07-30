@@ -173,7 +173,10 @@
        box-shadow:0 4px 24px rgba(16,32,48,.13);border-radius:10px;overflow:hidden;
        font-size:12.5px;color:#1c2733;line-height:1.5}
   .note-hd{background:linear-gradient(125deg,#0c3346 0%,#0e6b73 55%,#13908c 100%);color:#fff;
-       padding:26px 38px 22px;position:relative;overflow:hidden}
+       padding:26px 38px 22px;position:relative;overflow:hidden;display:flex;align-items:center;gap:18px}
+  .note-hd .note-hd-txt{flex:1;min-width:0}
+  .note-logo{width:66px;height:66px;object-fit:contain;background:#fff;border-radius:12px;
+       padding:6px;flex:0 0 auto;box-shadow:0 2px 8px rgba(0,0,0,.18);position:relative;z-index:1}
   .note-hd::after{content:"✚";position:absolute;right:-10px;top:-18px;font-size:130px;
        color:rgba(255,255,255,.06);font-weight:700;line-height:1}
   .note-hd .kicker{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;
@@ -216,6 +219,9 @@
   .note .algo.mid{background:#fdf6e9;color:#7a5a12;border-left:3px solid #d8a83c}
   .note .algo.high{background:#fdeeea;color:#96341f;border-left:3px solid #d0654c;font-weight:500}
   .note .recs{font-size:11.5px;line-height:1.6;padding:2px 0}
+  .note .recs-ol{margin:4px 0 0;padding-left:22px;font-size:11.5px;line-height:1.6}
+  .note .recs-ol li{margin-bottom:5px;padding-left:4px}
+  .note .recs-ol li::marker{color:#0e7c85;font-weight:700}
   .note .rec-block{margin-bottom:12px}
   .note .rec-block-hd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
        color:#fff;padding:4px 10px;border-radius:5px;margin-bottom:5px;display:inline-block}
@@ -264,6 +270,25 @@
 <div class="wrap">
   <!-- ================= FORM ================= -->
   <div class="form-pane" id="formPane">
+    <div class="card"><h2>Clínica</h2><div class="card-body">
+      <div class="field"><label>Sede</label><select id="clinica" onchange="onClinicaChange()">
+        <option value="mixco">Clínica Médica Juan Ciudad Duarte (Mixco)</option>
+        <option value="sancristobal">Especialidades Médicas Pinares (San Cristóbal)</option>
+        <option value="otra">Otra / personalizar…</option>
+      </select></div>
+      <div id="clinicaOtra" style="display:none">
+        <div class="grid2">
+          <div class="field"><label>Nombre de la clínica</label><input id="cl_nombre" oninput="render()"></div>
+          <div class="field"><label>Teléfono</label><input id="cl_tel" oninput="render()"></div>
+        </div>
+        <div class="field"><label>Dirección</label><input id="cl_dir" oninput="render()"></div>
+        <div class="field"><label>Logo (opcional)</label>
+          <input type="file" id="cl_logo" accept="image/*" onchange="loadLogo(event)" style="font-size:12px">
+          <div class="hint">PNG o JPG. Se guarda dentro del archivo; no sube a ningún servidor.</div>
+        </div>
+      </div>
+    </div></div>
+
     <div class="card"><h2>Fecha de la valoración</h2><div class="card-body">
       <div class="field" style="max-width:220px;margin-bottom:0">
         <input type="date" id="fecha" oninput="render()"></div>
@@ -503,6 +528,48 @@
 
 <script>
 /* ================= CONFIG ================= */
+// Clínicas: encabezado y firma se colocan automáticamente al elegir.
+// logo: URL o dataURL (base64). Si va vacío, se usa la cruz médica por defecto.
+const CLINICAS={
+  "mixco":{
+    nombre:"Clínica Médica Juan Ciudad Duarte",
+    direccion:"4a. Calle 6-39 zona 1 de Mixco",
+    telefono:"Tel. 5537 0427",
+    logo:"",
+    medico:"Dr. Denis W. Cotzojay Pirir",
+    credencial:"Medicina Interna — Colegiado 14,986"
+  },
+  "sancristobal":{
+    nombre:"Especialidades Médicas Pinares",
+    direccion:"San Cristóbal, Mixco",
+    telefono:"Tel. —",
+    logo:"",
+    medico:"Dr. Denis W. Cotzojay Pirir",
+    credencial:"Medicina Interna — Colegiado 14,986"
+  },
+  "otra":{
+    nombre:"",
+    direccion:"",
+    telefono:"",
+    logo:"",
+    medico:"Dr. Denis W. Cotzojay Pirir",
+    credencial:"Medicina Interna — Colegiado 14,986"
+  }
+};
+function clinicaActual(){
+  const k=val("clinica")||"mixco";
+  const base={...(CLINICAS[k]||CLINICAS["mixco"])};
+  // permitir sobrescribir con campos manuales (clínica "otra")
+  if(k==="otra"){
+    base.nombre=val("cl_nombre")||base.nombre||"Clínica";
+    base.direccion=val("cl_dir")||base.direccion;
+    base.telefono=val("cl_tel")||base.telefono;
+    if(window.__logoOtra)base.logo=window.__logoOtra;
+  }
+  return base;
+}
+
+
 const TIPOS = ["Oftalmológica","Dermatológica/plástica menor","Endoscopía con sedación","Mama",
 "Hernia de pared","Vesícula (lap)","Ginecológica","Urológica (RTU)","Cabeza y cuello/tiroides",
 "Ortopedia menor","Columna","Trauma mayor","Artroplastia cadera/rodilla","Abdominal mayor",
@@ -938,6 +1005,18 @@ function relevance(name){
   return (REL[name]||[])[idx]||"O";
 }
 
+/* ================= CLÍNICA / LOGO ================= */
+function onClinicaChange(){
+  document.getElementById("clinicaOtra").style.display = (val("clinica")==="otra")?"block":"none";
+  render();
+}
+function loadLogo(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{window.__logoOtra=r.result;render();};
+  r.readAsDataURL(f);
+}
+
 /* ================= DINAMOMETRÍA (fuerza de prensión) ================= */
 function dinamometria(){
   const dev=val("dyn_dev"), v=num("dyn_val"), sexo=val("sexo");
@@ -1263,6 +1342,7 @@ function suggestions(){
 }
 
 function render(){
+  const cl=clinicaActual();
   renderRecs();
   // compilar recomendaciones seleccionadas, agrupadas por fase
   const chosen=currentRecs().filter(r=>r.on);
@@ -1318,11 +1398,14 @@ function render(){
 
   const note=`
   <div class="note-hd">
-    <div class="kicker">Clínica Médica Juan Ciudad Duarte</div>
-    <h1>Valoración Preoperatoria</h1>
-    <div class="sub">
-      <span><b>Fecha:</b> ${fecha?esc(fmtFechaLarga(fecha)):"—"}</span>
-      <span><b>Cirugía no cardíaca</b></span>
+    ${cl.logo?`<img class="note-logo" src="${cl.logo}" alt="logo">`:""}
+    <div class="note-hd-txt">
+      <div class="kicker">${esc(cl.nombre)}</div>
+      <h1>Valoración Preoperatoria</h1>
+      <div class="sub">
+        <span><b>Fecha:</b> ${fecha?esc(fmtFechaLarga(fecha)):"—"}</span>
+        <span><b>Cirugía no cardíaca</b></span>
+      </div>
     </div>
   </div>
   <div class="note-body">
@@ -1414,17 +1497,16 @@ function render(){
 
   <h2>Recomendaciones</h2>
   ${(function(){
-    const bloque=(titulo,arr)=> arr.length? `<div class="rec-block"><div class="rec-block-hd">${titulo}</div>
-      <div class="recs">${arr.map(r=>`<div class="ri">${esc(r)}</div>`).join("")}</div></div>`:"";
-    const html=bloque("Previo a cirugía",recPre)+bloque("Transoperatorio",recTrans)+bloque("Postoperatorio",recPost);
-    return html||'<div class="muted">Sin recomendaciones seleccionadas.</div>';
+    const todas=[...recPre,...recTrans,...recPost];
+    if(!todas.length)return '<div class="muted">Sin recomendaciones seleccionadas.</div>';
+    return `<ol class="recs-ol">${todas.map(r=>`<li>${esc(r)}</li>`).join("")}</ol>`;
   })()}
 
   <div class="sign"><div class="line"></div>
-    <div class="nm">Dr. Denis W. Cotzojay Pirir</div>
-    <div class="sm">Medicina Interna — Colegiado 14,986</div>
-    <div class="sm">Clínica Médica Juan Ciudad Duarte</div>
-    <div class="sm" style="font-size:9.5px">4a. Calle 6-39 zona 1 de Mixco · Tel. 5537 0427</div>
+    <div class="nm">${esc(cl.medico)}</div>
+    <div class="sm">${esc(cl.credencial)}</div>
+    <div class="sm">${esc(cl.nombre)}</div>
+    <div class="sm" style="font-size:9.5px">${esc([cl.direccion,cl.telefono].filter(Boolean).join(" · "))}</div>
   </div>
   <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
   </div>`;
@@ -1447,49 +1529,48 @@ function collapseIrrelevant(){
 function downloadWord(){
   let noteHTML=document.getElementById("note").innerHTML;
   noteHTML=noteHTML.replace(/<div class="ri">/g,'<div class="ri">• ');
+  // las recomendaciones ya usan <ol>, pero ayuno/tromboprofilaxis usan .ri con viñeta
   const style=`<style>
-    body{font-family:Calibri,Arial,sans-serif;font-size:10.5pt;color:#1c2733;line-height:1.4}
-    .note-hd{background:#0e6b73;color:#fff;padding:14pt 16pt}
-    .note-hd .kicker{font-size:7.5pt;letter-spacing:2pt;text-transform:uppercase;font-weight:bold}
-    .note-hd h1{font-size:18pt;margin:4pt 0 0;font-weight:normal}
-    .note-hd .sub{margin-top:7pt;font-size:9pt}
+    body{font-family:Calibri,Arial,sans-serif;font-size:10.5pt;color:#1c2733;line-height:1.42}
+    .note-hd{background:#0c5157;color:#fff;padding:16pt 18pt;border-bottom:4pt solid #e8873c}
+    .note-logo{width:52pt;height:52pt;float:left;margin-right:12pt;background:#fff;border-radius:6pt;padding:3pt}
+    .note-hd .kicker{font-size:8pt;letter-spacing:2pt;text-transform:uppercase;font-weight:bold;color:#a9dcdc}
+    .note-hd h1{font-size:20pt;margin:3pt 0 0;font-weight:bold;letter-spacing:-.3pt}
+    .note-hd .sub{margin-top:8pt;font-size:9pt;color:#d6ecec}
     .note-hd .sub span{margin-right:18pt}
-    .note-body{padding:0 4pt}
-    .frame{font-size:8.5pt;font-style:italic;color:#6b5a3a;background:#fdf8ec;padding:8pt;margin:12pt 0}
-    h2{font-size:9.5pt;text-transform:uppercase;letter-spacing:.8pt;color:#0e6b73;
-       margin:14pt 0 5pt;padding-bottom:3pt;border-bottom:1.5pt solid #dbe6ea;font-weight:bold}
-    table{width:100%;border-collapse:collapse;margin:2pt 0}
-    td{padding:4pt 6pt;font-size:9.5pt;vertical-align:top;border-bottom:.5pt solid #edf1f3}
-    td.lab,td.lab-sm{color:#5b6b7a;font-weight:bold;font-size:9pt}
-    th{background:#f2f6f8;color:#123a4d;padding:4pt 6pt;font-size:8.5pt;
-       text-transform:uppercase;border-bottom:1.5pt solid #dbe6ea;text-align:left}
-    .risk-tbl td{font-size:9pt}
-    .sc-name{font-weight:bold;color:#17324d}
-    .sc-val{text-align:center;font-weight:bold;color:#0e6b73}
-    .chip{font-size:8pt;font-weight:bold;padding:2pt 6pt}
+    .note-body{padding:0 6pt}
+    .frame{font-size:8.5pt;font-style:italic;color:#6b5a3a;background:#fdf6e6;
+       padding:9pt 11pt;margin:12pt 0;border-left:3pt solid #d9b96b}
+    h2{font-size:10pt;text-transform:uppercase;letter-spacing:.6pt;color:#fff;background:#0e7c85;
+       margin:15pt 0 6pt;padding:5pt 10pt;font-weight:bold;border-left:5pt solid #0a5157}
+    table{width:100%;border-collapse:collapse;margin:3pt 0}
+    td{padding:4pt 7pt;font-size:9.5pt;vertical-align:top;border-bottom:.5pt solid #e4ebee}
+    td.lab,td.lab-sm{color:#0a5157;font-weight:bold;font-size:9pt;background:#f4f9f9;width:26%}
+    .risk-tbl{border:.5pt solid #cfdbe0}
+    .risk-tbl th{background:#12324a;color:#fff;padding:5pt 7pt;font-size:8.5pt;
+       text-transform:uppercase;letter-spacing:.4pt;text-align:left;font-weight:bold}
+    .risk-tbl td{font-size:9pt;border-bottom:.5pt solid #e4ebee}
+    .sc-name{font-weight:bold;color:#12324a}
+    .sc-val{text-align:center;font-weight:bold;color:#0e7c85;font-size:11pt}
+    .chip{font-size:8pt;font-weight:bold;padding:2pt 7pt;border-radius:8pt}
     .r-bajo{background:#e3f2e8;color:#276b45}
     .r-medio{background:#fdf1dc;color:#93650f}
     .r-alto{background:#fbe4e0;color:#a83a28}
     .r-na{background:#eef1f4;color:#93a0ac}
-    .algo{padding:8pt;font-size:9.5pt}
+    .algo{padding:9pt 11pt;font-size:9.5pt;border-left:3pt solid #4a9e6d}
     .algo.low{background:#eef7f1;color:#255e40}
-    .algo.mid{background:#fdf6e9;color:#7a5a12}
-    .algo.high{background:#fdeeea;color:#96341f}
-    .recs{font-size:9.5pt}
-    .recs .ri{padding:2pt 0}
-    .rec-block{margin-bottom:8pt}
-    .rec-block-hd{font-size:8pt;font-weight:bold;text-transform:uppercase;color:#fff;
-       padding:2pt 8pt;border-radius:3pt;display:inline-block;margin-bottom:3pt}
-    .rec-block:nth-child(1) .rec-block-hd{background:#3a7ca5}
-    .rec-block:nth-child(2) .rec-block-hd{background:#9a6f2e}
-    .rec-block:nth-child(3) .rec-block-hd{background:#2e7d5b}
+    .algo.mid{background:#fdf6e9;color:#7a5a12;border-left-color:#d8a83c}
+    .algo.high{background:#fdeeea;color:#96341f;border-left-color:#d0654c}
+    .recs-ol{font-size:9.5pt;padding-left:20pt;margin:3pt 0}
+    .recs-ol li{margin-bottom:3pt}
     .muted{color:#8794a0;font-style:italic;font-size:8.5pt}
     .sign{margin-top:26pt;text-align:center}
-    .sign .line{border-top:.75pt solid #34434f;width:190pt;margin:0 auto 3pt}
-    .sign .nm{font-weight:bold}
+    .sign .line{border-top:.75pt solid #34434f;width:200pt;margin:0 auto 3pt}
+    .sign .nm{font-weight:bold;color:#12324a}
     .sign .sm{font-size:9pt;color:#5b6b7a}
-    .ref{margin-top:16pt;padding-top:8pt;border-top:.5pt solid #edf1f3;font-size:7pt;color:#93a0ac;text-align:justify}
+    .ref{margin-top:16pt;padding-top:8pt;border-top:.5pt solid #e4ebee;font-size:7pt;color:#93a0ac;text-align:justify}
   </style>`;
+
   const pre="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'>"+style+"</head><body>";
   const html=pre+noteHTML+"</body></html>";
   const blob=new Blob(['\ufeff',html],{type:'application/msword'});
