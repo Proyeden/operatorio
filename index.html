@@ -173,7 +173,8 @@
        box-shadow:0 4px 24px rgba(16,32,48,.13);border-radius:10px;overflow:hidden;
        font-size:12.5px;color:#1c2733;line-height:1.5}
   .note-hd{background:linear-gradient(125deg,#0c3346 0%,#0e6b73 55%,#13908c 100%);color:#fff;
-       padding:26px 38px 22px;position:relative;overflow:hidden;display:flex;align-items:center;gap:18px}
+       padding:26px 38px 22px;position:relative;overflow:hidden;display:flex;align-items:center;gap:18px;
+       border-bottom:4px solid var(--accent)}
   .note-hd .note-hd-txt{flex:1;min-width:0}
   .note-logo{width:66px;height:66px;object-fit:contain;background:#fff;border-radius:12px;
        padding:6px;flex:0 0 auto;box-shadow:0 2px 8px rgba(0,0,0,.18);position:relative;z-index:1}
@@ -541,8 +542,8 @@ const CLINICAS={
   },
   "sancristobal":{
     nombre:"Especialidades Médicas Pinares",
-    direccion:"San Cristóbal, Mixco",
-    telefono:"Tel. —",
+    direccion:"Boulevard Pinares 17-07, interior Residenciales Pinares de San Cristóbal, Zona 8 de Mixco",
+    telefono:"Tel. 3658 0859",
     logo:"",
     medico:"Dr. Denis W. Cotzojay Pirir",
     credencial:"Medicina Interna — Colegiado 14,986"
@@ -1527,32 +1528,57 @@ function collapseIrrelevant(){
 
 /* ================= WORD EXPORT ================= */
 function downloadWord(){
+  const cl=clinicaActual();
   let noteHTML=document.getElementById("note").innerHTML;
+
+  // --- Transformar a estructuras que Word SÍ colorea (tablas con bgcolor) ---
+  // 1) Encabezado: reconstruir como tabla teal con banda naranja
+  const fecha=val("fecha");
+  const logoCell = cl.logo
+    ? `<td width="64" valign="middle" style="padding-right:10pt"><img src="${cl.logo}" width="56" height="56" style="background:#fff"></td>` : "";
+  const headerTable =
+   `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:2pt"><tr>
+      <td bgcolor="#0C5157" style="padding:16pt 18pt">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>${logoCell}
+          <td valign="middle">
+            <div style="font-size:8pt;letter-spacing:2pt;color:#8FCFCF;font-weight:bold">${esc((cl.nombre||"").toUpperCase())}</div>
+            <div style="font-size:21pt;color:#FFFFFF;font-weight:bold;margin-top:2pt">Valoración Preoperatoria</div>
+            <div style="font-size:9.5pt;color:#CFE9E9;margin-top:6pt">
+              <b>Fecha:</b> ${fecha?esc(fmtFechaLarga(fecha)):"—"} &nbsp;&nbsp;·&nbsp;&nbsp; <b>Cirugía no cardíaca</b></div>
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td bgcolor="#E8873C" style="font-size:1pt;line-height:4pt;height:4pt">&nbsp;</td></tr>
+    </table>`;
+  // reemplazar el bloque note-hd original
+  noteHTML = noteHTML.replace(/<div class="note-hd">[\s\S]*?<\/div>\s*<div class="note-body">/, headerTable+'<div class="note-body">');
+
+  // 2) Cada <h2> → banda de color como tabla con bgcolor
+  noteHTML = noteHTML.replace(/<h2>([\s\S]*?)<\/h2>/g, (m,txt)=>
+    `<table width="100%" cellpadding="0" cellspacing="0" style="margin:15pt 0 6pt"><tr>
+       <td bgcolor="#0A5157" width="5" style="font-size:1pt">&nbsp;</td>
+       <td bgcolor="#0E7C85" style="padding:5pt 10pt;color:#FFFFFF;font-weight:bold;font-size:10pt;
+           letter-spacing:.6pt;text-transform:uppercase">${txt}</td>
+     </tr></table>`);
+
+  // 3) el div .ri (ayuno, tromboprofilaxis, antitrombótico) con viñeta
   noteHTML=noteHTML.replace(/<div class="ri">/g,'<div class="ri">• ');
-  // las recomendaciones ya usan <ol>, pero ayuno/tromboprofilaxis usan .ri con viñeta
+
   const style=`<style>
     body{font-family:Calibri,Arial,sans-serif;font-size:10.5pt;color:#1c2733;line-height:1.42}
-    .note-hd{background:#0c5157;color:#fff;padding:16pt 18pt;border-bottom:4pt solid #e8873c}
-    .note-logo{width:52pt;height:52pt;float:left;margin-right:12pt;background:#fff;border-radius:6pt;padding:3pt}
-    .note-hd .kicker{font-size:8pt;letter-spacing:2pt;text-transform:uppercase;font-weight:bold;color:#a9dcdc}
-    .note-hd h1{font-size:20pt;margin:3pt 0 0;font-weight:bold;letter-spacing:-.3pt}
-    .note-hd .sub{margin-top:8pt;font-size:9pt;color:#d6ecec}
-    .note-hd .sub span{margin-right:18pt}
     .note-body{padding:0 6pt}
     .frame{font-size:8.5pt;font-style:italic;color:#6b5a3a;background:#fdf6e6;
        padding:9pt 11pt;margin:12pt 0;border-left:3pt solid #d9b96b}
-    h2{font-size:10pt;text-transform:uppercase;letter-spacing:.6pt;color:#fff;background:#0e7c85;
-       margin:15pt 0 6pt;padding:5pt 10pt;font-weight:bold;border-left:5pt solid #0a5157}
-    table{width:100%;border-collapse:collapse;margin:3pt 0}
-    td{padding:4pt 7pt;font-size:9.5pt;vertical-align:top;border-bottom:.5pt solid #e4ebee}
-    td.lab,td.lab-sm{color:#0a5157;font-weight:bold;font-size:9pt;background:#f4f9f9;width:26%}
-    .risk-tbl{border:.5pt solid #cfdbe0}
+    table.data{width:100%;border-collapse:collapse;margin:3pt 0}
+    table.data td{padding:4pt 7pt;font-size:9.5pt;vertical-align:top;border-bottom:.5pt solid #e4ebee}
+    td.lab,td.lab-sm{color:#0a5157;font-weight:bold;font-size:9pt}
+    .risk-tbl{width:100%;border-collapse:collapse;border:.5pt solid #cfdbe0;margin:3pt 0}
     .risk-tbl th{background:#12324a;color:#fff;padding:5pt 7pt;font-size:8.5pt;
        text-transform:uppercase;letter-spacing:.4pt;text-align:left;font-weight:bold}
-    .risk-tbl td{font-size:9pt;border-bottom:.5pt solid #e4ebee}
+    .risk-tbl td{font-size:9pt;padding:4pt 7pt;border-bottom:.5pt solid #e4ebee}
     .sc-name{font-weight:bold;color:#12324a}
     .sc-val{text-align:center;font-weight:bold;color:#0e7c85;font-size:11pt}
-    .chip{font-size:8pt;font-weight:bold;padding:2pt 7pt;border-radius:8pt}
+    .chip{font-size:8pt;font-weight:bold;padding:2pt 7pt}
     .r-bajo{background:#e3f2e8;color:#276b45}
     .r-medio{background:#fdf1dc;color:#93650f}
     .r-alto{background:#fbe4e0;color:#a83a28}
@@ -1570,6 +1596,12 @@ function downloadWord(){
     .sign .sm{font-size:9pt;color:#5b6b7a}
     .ref{margin-top:16pt;padding-top:8pt;border-top:.5pt solid #e4ebee;font-size:7pt;color:#93a0ac;text-align:justify}
   </style>`;
+  // marcar las tablas de datos para el CSS (las que no son risk-tbl)
+  noteHTML=noteHTML.replace(/<table><tr>/g,'<table class="data"><tr>');
+  // chips de nivel con bgcolor (Word respeta bgcolor en celdas/span vía atributo)
+  const chipBg={"r-bajo":"#E3F2E8","r-medio":"#FDF1DC","r-alto":"#FBE4E0","r-na":"#EEF1F4"};
+  noteHTML=noteHTML.replace(/<span class="chip (r-\w+)">([\s\S]*?)<\/span>/g,(m,cls,txt)=>
+    `<span class="chip ${cls}" style="background:${chipBg[cls]||"#EEF1F4"}">${txt}</span>`);
 
   const pre="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'>"+style+"</head><body>";
   const html=pre+noteHTML+"</body></html>";
