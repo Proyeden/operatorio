@@ -6,52 +6,64 @@
 <title>Valoración Preoperatoria — Cirugía No Cardíaca</title>
 <style>
   :root{
-    --ink:#16222e; --muted:#5b6b7a; --line:#d9e0e6; --bg:#eef2f5; --card:#fff;
-    --primary:#0e6b73; --primary-dark:#0a4f55; --navy:#17324d;
+    --ink:#16252f; --muted:#5f7180; --line:#dde5ea; --bg:#e8eef2; --card:#fff;
+    --primary:#0e7c85; --primary-dark:#0a5157; --navy:#12324a; --teal-soft:#e6f3f3;
+    --accent:#e8873c; --accent-soft:#fdefe0;
     --priority:#2e7d4f; --priority-bg:#e4f2ea;
     --optional:#b9770e; --optional-bg:#fbf1dd;
     --na:#98a4b0; --na-bg:#eef1f4;
     --low:#2e7d4f; --mid:#c07f12; --high:#c0392b;
-    --input:#fffdf5;
+    --input:#fffef9;
+    --shadow:0 1px 3px rgba(18,50,74,.06),0 6px 16px rgba(18,50,74,.06);
+    --shadow-lg:0 4px 24px rgba(18,50,74,.13);
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-       color:var(--ink);background:var(--bg);line-height:1.45;font-size:14px}
+       color:var(--ink);line-height:1.45;font-size:14px;
+       background:linear-gradient(180deg,#eef4f6 0%,#e4ecf0 100%);background-attachment:fixed}
   /* ---- Top bar ---- */
-  header.topbar{position:sticky;top:0;z-index:50;background:var(--primary-dark);
+  header.topbar{position:sticky;top:0;z-index:50;
+       background:linear-gradient(120deg,#0a5157 0%,#0e7c85 60%,#13908c 100%);
        color:#fff;display:flex;align-items:center;justify-content:space-between;
-       padding:10px 18px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+       padding:11px 20px;box-shadow:0 2px 14px rgba(10,81,87,.35);
+       border-bottom:1px solid rgba(255,255,255,.08)}
   header.topbar h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em;
        display:flex;align-items:center;gap:10px}
+  header.topbar h1::before{content:"✚";font-size:15px;background:rgba(255,255,255,.16);
+       width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center}
   header.topbar h1 .tag{font-weight:400;font-size:11px;background:rgba(255,255,255,.15);
        padding:2px 8px;border-radius:10px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
   .status{font-size:11px;color:rgba(255,255,255,.85);font-style:italic;min-width:70px;text-align:right}
   .btn{border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;
        cursor:pointer;font-family:inherit;transition:.15s}
+  .btn{box-shadow:0 1px 2px rgba(0,0,0,.08)}
   .btn-word{background:#fff;color:var(--primary-dark)}
-  .btn-word:hover{background:#e9f3f2}
-  .btn-pdf{background:var(--primary);color:#fff}
-  .btn-pdf:hover{background:#0c5a61}
+  .btn-word:hover{background:#eefaf9;transform:translateY(-1px)}
+  .btn-pdf{background:linear-gradient(135deg,#e8873c,#d9752b);color:#fff}
+  .btn-pdf:hover{filter:brightness(1.06);transform:translateY(-1px)}
   .btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
   .btn-ghost:hover{background:rgba(255,255,255,.12)}
   /* ---- Layout ---- */
   .wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:start}
   .form-pane{padding:18px 20px 80px;max-height:calc(100vh - 52px);overflow-y:auto}
-  .preview-pane{position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;
-       background:#dfe6ec;padding:20px;border-left:1px solid var(--line)}
+  .preview-pane{position:sticky;top:54px;height:calc(100vh - 54px);overflow-y:auto;
+       background:linear-gradient(160deg,#dbe5ea,#cfdce2);padding:22px;border-left:1px solid var(--line)}
   @media(max-width:900px){
     .wrap{grid-template-columns:1fr}
     .preview-pane{position:static;height:auto;max-height:none}
     .form-pane{max-height:none;overflow:visible}
   }
   /* ---- Form ---- */
-  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;
-       margin-bottom:16px;overflow:hidden}
-  .card > h2{margin:0;font-size:13px;font-weight:700;letter-spacing:.04em;
-       text-transform:uppercase;color:#fff;background:var(--navy);padding:9px 14px;
-       display:flex;align-items:center;gap:8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+       margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .2s,transform .2s}
+  .card:hover{box-shadow:var(--shadow-lg)}
+  .card > h2{margin:0;font-size:12.5px;font-weight:700;letter-spacing:.05em;
+       text-transform:uppercase;color:#fff;padding:11px 16px;
+       background:linear-gradient(100deg,#12324a 0%,#1c4a63 100%);
+       display:flex;align-items:center;gap:9px;position:relative}
+  .card > h2::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--primary)}
   .card-body{padding:12px 14px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 12px}
@@ -63,13 +75,16 @@
        padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--input);
        color:var(--ink);width:100%}
   .field input:focus,.field select:focus,.field textarea:focus{outline:none;
-       border-color:var(--primary);box-shadow:0 0 0 2px rgba(14,107,115,.15)}
+       border-color:var(--primary);box-shadow:0 0 0 3px rgba(14,124,133,.15);background:#fff}
+  .field input,.field select,.field textarea{transition:border-color .15s,box-shadow .15s,background .15s}
   .field textarea{resize:vertical;min-height:44px}
   .hint{font-size:11px;color:var(--muted);font-style:italic;margin-top:2px}
   /* ---- Score blocks ---- */
   .score{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
   .score-head{display:flex;align-items:center;justify-content:space-between;gap:8px;
-       padding:8px 12px;background:#f4f7f9;cursor:pointer;user-select:none}
+       padding:9px 13px;background:linear-gradient(180deg,#f7fafb,#eef4f6);cursor:pointer;user-select:none;
+       border-left:3px solid transparent;transition:border-color .15s}
+  .score:hover .score-head{border-left-color:var(--primary)}
   .score-head .stitle{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px}
   .score-head .chev{color:var(--muted);transition:transform .2s;font-size:11px}
   .score.collapsed .chev{transform:rotate(-90deg)}
@@ -117,8 +132,10 @@
   .b-pri{background:var(--priority-bg);color:var(--priority)}
   .b-opt{background:var(--optional-bg);color:var(--optional)}
   .b-na{background:var(--na-bg);color:var(--na)}
-  .score-total{font-size:12px;font-weight:700;background:var(--navy);color:#fff;
-       padding:2px 9px;border-radius:10px;min-width:34px;text-align:center}
+  .score-total{font-size:12px;font-weight:700;color:#fff;
+       background:linear-gradient(135deg,#0e7c85,#0a5157);
+       padding:3px 10px;border-radius:9px;min-width:34px;text-align:center;
+       box-shadow:0 1px 3px rgba(10,81,87,.3)}
   .score-body{padding:8px 12px 12px}
   .score-interp{font-size:12px;color:var(--primary-dark);background:#eef6f6;
        border-left:3px solid var(--primary);padding:6px 9px;border-radius:0 5px 5px 0;margin-top:8px}
@@ -135,15 +152,30 @@
   .rowsel select{flex:1;font-size:12px;padding:5px 7px;border:1px solid var(--line);
        border-radius:5px;background:var(--input)}
   /* ---- Recs ---- */
-  .rec-item{display:flex;align-items:flex-start;gap:8px;padding:3px 0;font-size:12.5px;cursor:pointer}
-  .rec-item input{margin-top:2px;accent-color:var(--primary)}
-  .rec-suggest{font-size:12px;background:#eef6f6;border-left:3px solid var(--primary);
-       padding:5px 9px;border-radius:0 5px 5px 0;margin:3px 0;color:var(--primary-dark)}
+  .rec-item{display:flex;align-items:flex-start;gap:8px;padding:4px 6px;font-size:12.5px;cursor:pointer;border-radius:6px}
+  .rec-item:hover{background:#f4f8f9}
+  .rec-item input{margin-top:2px;accent-color:var(--primary);flex:0 0 auto}
+  .rec-tip{font-size:11px;color:var(--muted);background:#f5f9fa;border-radius:6px;padding:8px 10px;margin-bottom:12px;line-height:1.5}
+  .rec-phase{margin-bottom:14px}
+  .rec-phase-hd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+       padding:5px 10px;border-radius:6px;margin-bottom:5px;color:#fff}
+  .rec-pre{background:#3a7ca5}.rec-trans{background:#9a6f2e}.rec-post{background:#2e7d5b}
+  .rec-auto{font-size:9px;font-weight:700;background:#e4eef0;color:var(--primary-dark);
+       padding:1px 6px;border-radius:8px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em}
+  .rec-del{margin-left:auto;background:none;border:none;color:#c0787a;cursor:pointer;font-size:13px;padding:0 4px;flex:0 0 auto}
+  .rec-del:hover{color:#a83a28}
+  .rec-empty{font-size:11px;color:var(--muted);font-style:italic;padding:2px 6px}
+  .rec-add{width:100%;margin-top:4px;font-size:12px;padding:6px 9px;border:1px dashed var(--line);
+       border-radius:6px;background:#fafcfc;font-family:inherit;color:var(--ink)}
+  .rec-add:focus{outline:none;border-color:var(--primary);border-style:solid;background:#fff}
   /* ---- Note preview (diseño moderno) ---- */
   .note{background:#fff;max-width:760px;margin:0 auto;padding:0 0 38px;
        box-shadow:0 4px 24px rgba(16,32,48,.13);border-radius:10px;overflow:hidden;
        font-size:12.5px;color:#1c2733;line-height:1.5}
-  .note-hd{background:linear-gradient(135deg,#123a4d 0%,#0e6b73 100%);color:#fff;padding:24px 38px 20px}
+  .note-hd{background:linear-gradient(125deg,#0c3346 0%,#0e6b73 55%,#13908c 100%);color:#fff;
+       padding:26px 38px 22px;position:relative;overflow:hidden}
+  .note-hd::after{content:"✚";position:absolute;right:-10px;top:-18px;font-size:130px;
+       color:rgba(255,255,255,.06);font-weight:700;line-height:1}
   .note-hd .kicker{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;
        opacity:.75;font-weight:600;margin-bottom:5px}
   .note-hd h1{font-size:22px;margin:0;font-weight:600;letter-spacing:-.01em;line-height:1.2}
@@ -151,33 +183,45 @@
        font-size:11.5px;opacity:.92;display:flex;gap:22px;flex-wrap:wrap}
   .note-hd .sub b{font-weight:600}
   .note-body{padding:0 38px}
-  .note .frame{font-size:10.5px;font-style:italic;color:#6b5a3a;background:#fdf8ec;
-       padding:11px 14px;border-left:3px solid #d9b96b;margin:20px 0 22px;border-radius:0 6px 6px 0}
-  .note h2{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#0e6b73;
-       margin:26px 0 10px;padding-bottom:6px;border-bottom:2px solid #dbe6ea;font-weight:700;
+  .note .frame{font-size:10.5px;font-style:italic;color:#6b5a3a;background:linear-gradient(100deg,#fdf6e6,#fdfaf1);
+       padding:11px 14px 11px 34px;border-left:3px solid #d9b96b;margin:20px 0 22px;border-radius:0 6px 6px 0;
+       position:relative}
+  .note .frame::before{content:"ⓘ";position:absolute;left:12px;top:10px;font-style:normal;color:#c99a3c;font-size:13px}
+  .note h2{font-size:10.5px;text-transform:uppercase;letter-spacing:.11em;color:#0a5157;
+       margin:24px 0 11px;padding:7px 12px;font-weight:700;border-radius:7px;
+       background:linear-gradient(100deg,#e6f3f3,#f2f9f9);border-left:4px solid #0e7c85;
        display:flex;align-items:center;gap:8px}
-  .note h2::before{content:"";width:4px;height:13px;background:#0e6b73;border-radius:2px;flex:0 0 auto}
   .note table{width:100%;border-collapse:collapse;margin:2px 0 4px}
   .note td{padding:6px 9px;vertical-align:top;font-size:11.5px;border-bottom:1px solid #edf1f3}
-  .note td.lab{color:#5b6b7a;font-weight:600;width:27%;font-size:11px}
+  .note tr:hover td{background:#f8fbfb}
+  .note td.lab{color:#0a5157;font-weight:600;width:27%;font-size:11px}
   .note td.lab-sm{color:#5b6b7a;font-weight:600;font-size:11px}
   .note .risk-tbl{margin-top:4px}
-  .note .risk-tbl th{background:#f2f6f8;color:#123a4d;padding:7px 9px;font-size:10px;
-       text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid #dbe6ea;text-align:left}
+  .note .risk-tbl th{background:linear-gradient(100deg,#12324a,#1c4a63);color:#fff;padding:8px 9px;font-size:9.5px;
+       text-transform:uppercase;letter-spacing:.07em;text-align:left;border:none}
+  .note .risk-tbl tr:first-child th:first-child{border-radius:6px 0 0 0}
+  .note .risk-tbl tr:first-child th:last-child{border-radius:0 6px 0 0}
   .note .risk-tbl td{font-size:11px;border-bottom:1px solid #edf1f3}
   .note .risk-tbl .sc-name{font-weight:700;color:#17324d}
   .note .risk-tbl .sc-val{text-align:center;font-weight:700;font-size:13px;color:#0e6b73;white-space:nowrap}
-  .chip{display:inline-block;font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:11px;
-       letter-spacing:.03em;white-space:nowrap}
+  .chip{display:inline-block;font-size:9.5px;font-weight:700;padding:3px 10px;border-radius:11px;
+       letter-spacing:.03em;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
   .r-bajo{background:#e3f2e8;color:#276b45}
   .r-medio{background:#fdf1dc;color:#93650f}
   .r-alto{background:#fbe4e0;color:#a83a28}
   .r-na{background:#eef1f4;color:#93a0ac}
-  .note .algo{padding:11px 14px;border-radius:7px;font-size:11.5px;line-height:1.55;margin-top:4px}
+  .note .algo{padding:12px 15px;border-radius:8px;font-size:11.5px;line-height:1.55;margin-top:4px;
+       box-shadow:0 1px 4px rgba(18,50,74,.06)}
   .note .algo.low{background:#eef7f1;color:#255e40;border-left:3px solid #4a9e6d}
   .note .algo.mid{background:#fdf6e9;color:#7a5a12;border-left:3px solid #d8a83c}
   .note .algo.high{background:#fdeeea;color:#96341f;border-left:3px solid #d0654c;font-weight:500}
   .note .recs{font-size:11.5px;line-height:1.6;padding:2px 0}
+  .note .rec-block{margin-bottom:12px}
+  .note .rec-block-hd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+       color:#fff;padding:4px 10px;border-radius:5px;margin-bottom:5px;display:inline-block}
+  .note .rec-block:nth-child(1) .rec-block-hd{background:#3a7ca5}
+  .note .rec-block:nth-child(2) .rec-block-hd{background:#9a6f2e}
+  .note .rec-block:nth-child(3) .rec-block-hd{background:#2e7d5b}
   .note .recs .ri{display:flex;gap:8px;padding:3px 0}
   .note .recs .ri::before{content:"—";color:#0e6b73;flex:0 0 auto;font-weight:700}
   .note .callout{background:#f5f9fa;border-left:3px solid #0e6b73;padding:10px 13px;
@@ -284,6 +328,22 @@
         <div class="field"><label>Talla (cm)</label><input type="number" id="talla" oninput="calc()"></div>
       </div>
       <div class="hint" id="antropo_hint"></div>
+      <div style="border:1px dashed var(--line);border-radius:8px;padding:10px 12px;margin:8px 0;background:#fafcfc">
+        <div style="font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:6px">
+          Dinamometría (fuerza de prensión) <span style="font-weight:400;font-style:italic;color:var(--muted)">— opcional</span></div>
+        <div class="grid3">
+          <div class="field"><label>Dispositivo</label><select id="dyn_dev" onchange="calc()">
+            <option value="">—</option>
+            <option value="jamar">Dinamómetro hidráulico (Jamar/clínico)</option>
+            <option value="digital">Dinamómetro digital clínico</option>
+            <option value="squegg">Squegg (consumo)</option>
+          </select></div>
+          <div class="field"><label>Mano dominante</label><select id="dyn_hand" onchange="render()">
+            <option value="">—</option><option>Derecha</option><option>Izquierda</option></select></div>
+          <div class="field"><label>Mejor de 2-3 intentos (kg)</label><input type="number" id="dyn_val" step="0.1" min="0" oninput="calc()"></div>
+        </div>
+        <div class="hint" id="dyn_hint"></div>
+      </div>
       <div class="field"><label>Estado general</label><textarea id="ef_gen" oninput="render()"></textarea></div>
       <div class="grid2">
         <div class="field"><label>Cabeza y cuello</label><textarea id="ef_cab" oninput="render()"></textarea></div>
@@ -410,12 +470,13 @@
     </div></div>
 
     <div class="card"><h2>Recomendaciones</h2><div class="card-body">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Sugeridas automáticamente según los scores:</div>
-      <div id="recSuggest"></div>
-      <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">Banco (marque para incluir):</div>
-      <div id="recBank"></div>
-      <div class="field" style="margin-top:10px"><label>Observaciones adicionales (texto libre)</label>
-        <textarea id="recFree" rows="4" oninput="render()"></textarea></div>
+      <div class="rec-tip">Cada recomendación es opcional y editable. Marque las que quiera incluir en la nota; las sugeridas por los scores vienen premarcadas pero puede desmarcarlas. Se agrupan por fase.</div>
+      <div class="rec-phase"><div class="rec-phase-hd rec-pre">Previo a cirugía</div><div id="recPre"></div>
+        <input class="rec-add" id="addPre" placeholder="+ Agregar recomendación preoperatoria y Enter" onkeydown="addRec(event,'pre')"></div>
+      <div class="rec-phase"><div class="rec-phase-hd rec-trans">Transoperatorio</div><div id="recTrans"></div>
+        <input class="rec-add" id="addTrans" placeholder="+ Agregar recomendación transoperatoria y Enter" onkeydown="addRec(event,'trans')"></div>
+      <div class="rec-phase"><div class="rec-phase-hd rec-post">Postoperatorio</div><div id="recPost"></div>
+        <input class="rec-add" id="addPost" placeholder="+ Agregar recomendación postoperatoria y Enter" onkeydown="addRec(event,'post')"></div>
     </div></div>
   </div>
 
@@ -583,36 +644,44 @@ const SCORES = {
 };
 const SCORE_ORDER=["RCRI","AUB-HAS2","Detsky","DASI","ARISCAT","Caprini","Wells","STOP-BANG","mFI-5","CFS","Charlson","Apfel","ASA"];
 
+// Banco de recomendaciones por fase: [texto, "pre"|"trans"|"post"]
 const REC_BANK=[
-"Tiempo quirúrgico corto.","Movilización temprana postoperatoria.",
-"Ayuno según protocolo ERAS (líquidos claros hasta 2 h antes).",
-"Suspender inhibidores de SGLT2 (empagliflozina, dapagliflozina, canagliflozina) 3-4 días antes de la cirugía por riesgo de cetoacidosis euglucémica perioperatoria.",
-"Continuar el tratamiento antihipertensivo crónico en el perioperatorio; evitar suspensión abrupta de betabloqueadores o clonidina por rebote.",
-"Suspender IECA/ARA-II la mañana de la cirugía por riesgo de hipotensión intraoperatoria; reiniciarlos tan pronto sea clínicamente razonable.",
-"Evitar hipotensión intraoperatoria sostenida (mantener PAM ≥ 60-65 mmHg o PAS > 90 mmHg).",
-"No diferir la cirugía por cifras aisladas de presión arterial < 180/110 mmHg en ausencia de daño agudo de órgano blanco.",
-"Continuar estatinas en el perioperatorio.",
-"Continuar la terapia médica dirigida por guías (GDMT) de insuficiencia cardíaca; no suspenderla sin indicación específica.",
-"No iniciar betabloqueadores de novo el día de la cirugía.",
-"Monitoreo continuo de signos vitales transoperatorio y en la primera hora postoperatoria.",
-"Vigilancia de troponina postoperatoria (24-48 h) por riesgo de lesión miocárdica tras cirugía no cardíaca (MINS) en pacientes de riesgo elevado.",
-"Vigilar aparición de fibrilación auricular perioperatoria; si se presenta, seguimiento estrecho por riesgo aumentado de ACV.",
-"Profilaxis mecánica de TVP con compresión neumática intermitente o medias de compresión graduada.",
-"Profilaxis antibiótica con cefazolina 2 g IV 30 min antes de incisión; repetir si cirugía > 4 h.",
-"Control glucémico perioperatorio (meta 140-180 mg/dl).",
-"Tromboprofilaxis farmacológica con HBPM (preferida sobre heparina no fraccionada por menor número de inyecciones y menor riesgo de trombocitopenia inducida por heparina).",
-"Iniciar tromboprofilaxis farmacológica en el postoperatorio (12-24 h) una vez asegurada la hemostasia; en pacientes encamados o de alto riesgo de TEV puede justificarse iniciarla antes de la cirugía.",
-"Continuar tromboprofilaxis hasta la deambulación plena; considerar profilaxis extendida al alta en cirugía oncológica abdominopélvica o artroplastia mayor.",
-"Manejo de anticoagulación según riesgo trombótico y hemorrágico; el puenteo (bridging) solo en pacientes de muy alto riesgo trombótico, no de rutina.",
-"Manejo de antiagregación según tiempo desde la revascularización coronaria y riesgo hemorrágico.",
-"Analgesia multimodal, minimizar opioides.","Profilaxis de náusea y vómito postoperatorio (NVPO).",
-"Normotermia perioperatoria activa.","Optimización de hemoglobina preoperatoria si anemia.",
-"Reservar hemoderivados / pruebas cruzadas según sangrado esperado.",
-"Interconsulta a cardiología.","Interconsulta a neumología.",
-"Manejo en equipo multidisciplinario (cirugía, anestesia, cardiología).",
-"Prehabilitación (acondicionamiento físico y soporte nutricional) antes de la cirugía.",
-"Consentimiento informado reforzado y discusión de metas de cuidado (riesgo elevado / fragilidad).",
-"Planificar cama de cuidados intermedios / UCI postoperatoria.",
+["Prehabilitación (acondicionamiento físico y soporte nutricional) antes de la cirugía.","pre"],
+["Optimización de hemoglobina preoperatoria si anemia.","pre"],
+["Consentimiento informado reforzado y discusión de metas de cuidado (riesgo elevado / fragilidad).","pre"],
+["Suspender inhibidores de SGLT2 (empagliflozina, dapagliflozina, canagliflozina) 3-4 días antes de la cirugía por riesgo de cetoacidosis euglucémica perioperatoria.","pre"],
+["Continuar el tratamiento antihipertensivo crónico; evitar suspensión abrupta de betabloqueadores o clonidina por rebote.","pre"],
+["Suspender IECA/ARA-II la mañana de la cirugía por riesgo de hipotensión intraoperatoria; reiniciarlos tan pronto sea clínicamente razonable.","pre"],
+["Continuar estatinas en el perioperatorio.","pre"],
+["Continuar la terapia médica dirigida por guías (GDMT) de insuficiencia cardíaca; no suspenderla sin indicación específica.","pre"],
+["No iniciar betabloqueadores de novo el día de la cirugía.","pre"],
+["Ayuno según protocolo ERAS (líquidos claros hasta 2 h antes).","pre"],
+["Interconsulta a cardiología.","pre"],
+["Interconsulta a neumología.","pre"],
+["Reservar hemoderivados / pruebas cruzadas según sangrado esperado.","pre"],
+["Profilaxis antibiótica con cefazolina 2 g IV 30 min antes de incisión; repetir si cirugía > 4 h.","pre"],
+["Manejo en equipo multidisciplinario (cirugía, anestesia, cardiología).","pre"],
+["Planificar cama de cuidados intermedios / UCI postoperatoria.","pre"],
+
+["Evitar hipotensión intraoperatoria sostenida (mantener PAM ≥ 60-65 mmHg o PAS > 90 mmHg).","trans"],
+["No diferir la cirugía por cifras aisladas de presión arterial < 180/110 mmHg en ausencia de daño agudo de órgano blanco.","trans"],
+["Monitoreo continuo de signos vitales durante el transoperatorio.","trans"],
+["Normotermia perioperatoria activa.","trans"],
+["Analgesia multimodal, minimizar opioides.","trans"],
+["Profilaxis de náusea y vómito postoperatorio (NVPO).","trans"],
+["Profilaxis mecánica de TVP con compresión neumática intermitente o medias de compresión graduada.","trans"],
+["Tiempo quirúrgico corto.","trans"],
+["Control glucémico intraoperatorio (meta 140-180 mg/dl).","trans"],
+
+["Monitoreo de signos vitales en la primera hora postoperatoria.","post"],
+["Movilización temprana postoperatoria.","post"],
+["Vigilancia de troponina postoperatoria (24-48 h) por riesgo de lesión miocárdica tras cirugía no cardíaca (MINS) en pacientes de riesgo elevado.","post"],
+["Vigilar aparición de fibrilación auricular perioperatoria; si se presenta, seguimiento estrecho por riesgo aumentado de ACV.","post"],
+["Control glucémico postoperatorio (meta 140-180 mg/dl).","post"],
+["Tromboprofilaxis farmacológica con HBPM (preferida sobre heparina no fraccionada por menor número de inyecciones y menor riesgo de trombocitopenia inducida por heparina).","post"],
+["Iniciar tromboprofilaxis farmacológica (12-24 h) una vez asegurada la hemostasia.","post"],
+["Continuar tromboprofilaxis hasta la deambulación plena; considerar profilaxis extendida al alta en cirugía oncológica abdominopélvica o artroplastia mayor.","post"],
+["Reiniciar anticoagulación según riesgo trombótico y hemorrágico, una vez lograda la hemostasia.","post"],
 ];
 
 /* ================= STATE ================= */
@@ -679,13 +748,69 @@ function buildScores(){
     box.appendChild(wrap);
   });
 }
+// Estado de recomendaciones: cada una {texto, fase, on, origen}
+// origen: "bank" | "auto" | "custom"
+let REC_STATE=[];      // recomendaciones personalizadas y de banco con su estado
+let REC_USER_TOGGLED={}; // texto -> bool, para recordar decisiones del usuario sobre autos
+
 function buildRecBank(){
-  const b=document.getElementById("recBank");
-  REC_BANK.forEach((t,i)=>{
-    const l=el("label",{class:"rec-item"});
-    l.innerHTML=`<input type="checkbox" id="rb_${i}" onchange="render()"><span>${t}</span>`;
-    b.appendChild(l);
+  // inicializa el banco como recomendaciones apagadas
+  REC_BANK.forEach(([texto,fase])=>{
+    REC_STATE.push({texto,fase,on:false,origen:"bank"});
   });
+  renderRecs();
+}
+
+function recKey(t){return t.trim().toLowerCase();}
+
+function currentRecs(){
+  // combina banco/custom (REC_STATE) + sugeridas automáticas (con memoria de toggle)
+  const map=new Map();
+  REC_STATE.forEach(r=>map.set(recKey(r.texto),{...r}));
+  suggestions().forEach(([texto,fase])=>{
+    const k=recKey(texto);
+    const toggled = (k in REC_USER_TOGGLED) ? REC_USER_TOGGLED[k] : true; // autos premarcadas
+    if(map.has(k)){map.get(k).on = map.get(k).on || toggled; map.get(k).origen="auto";}
+    else map.set(k,{texto,fase,on:toggled,origen:"auto"});
+  });
+  return [...map.values()];
+}
+
+function renderRecs(){
+  const recs=currentRecs();
+  ["pre","trans","post"].forEach(fase=>{
+    const box=document.getElementById(fase==="pre"?"recPre":fase==="trans"?"recTrans":"recPost");
+    if(!box)return;
+    const items=recs.filter(r=>r.fase===fase);
+    box.innerHTML = items.length? items.map(r=>{
+      const k=recKey(r.texto);
+      const badge = r.origen==="auto"?`<span class="rec-auto">sugerida</span>`:"";
+      const del = r.origen==="custom"?`<button class="rec-del" onclick="delRec('${k.replace(/'/g,"\\'")}')" title="Eliminar">✕</button>`:"";
+      return `<label class="rec-item"><input type="checkbox" ${r.on?"checked":""}
+        onchange="toggleRec('${k.replace(/'/g,"\\'")}',this.checked)">
+        <span>${esc(r.texto)}${badge}</span>${del}</label>`;
+    }).join("") : `<div class="rec-empty">—</div>`;
+  });
+}
+
+function toggleRec(k,on){
+  // buscar en REC_STATE
+  const r=REC_STATE.find(x=>recKey(x.texto)===k);
+  if(r){r.on=on;}
+  else {REC_USER_TOGGLED[k]=on;} // es una automática
+  render();
+}
+function addRec(ev,fase){
+  if(ev.key!=="Enter")return;
+  const t=ev.target.value.trim();
+  if(!t)return;
+  REC_STATE.push({texto:t,fase,on:true,origen:"custom"});
+  ev.target.value="";
+  renderRecs();render();
+}
+function delRec(k){
+  REC_STATE=REC_STATE.filter(x=>recKey(x.texto)!==k);
+  renderRecs();render();
 }
 
 /* ================= HELPERS ================= */
@@ -813,7 +938,30 @@ function relevance(name){
   return (REL[name]||[])[idx]||"O";
 }
 
-/* ================= ÍNDICE TABÁQUICO ================= */
+/* ================= DINAMOMETRÍA (fuerza de prensión) ================= */
+function dinamometria(){
+  const dev=val("dyn_dev"), v=num("dyn_val"), sexo=val("sexo");
+  if(!dev || v===null)return null;
+  const clinico = (dev==="jamar"||dev==="digital");
+  const devName = dev==="jamar"?"dinamómetro hidráulico":(dev==="digital"?"dinamómetro digital clínico":"Squegg");
+  let interp="", low=false, level="";
+  if(!sexo){
+    interp=`${v.toFixed(1)} kg (${devName}). Indique el sexo para interpretar según umbrales de sarcopenia.`;
+  } else {
+    const corte = sexo==="Masculino"?27:16;
+    low = v<corte;
+    level = low?"Baja":"Normal";
+    if(clinico){
+      interp = low
+        ? `${v.toFixed(1)} kg (${devName}) · fuerza BAJA para ${sexo.toLowerCase()} (umbral EWGSOP2 <${corte} kg). Sugiere debilidad muscular / probable sarcopenia: se asocia a mayor riesgo de complicaciones, estancia prolongada y mortalidad postoperatoria. Reforzar prehabilitación, soporte nutricional y proteico, y decisión compartida.`
+        : `${v.toFixed(1)} kg (${devName}) · fuerza conservada para ${sexo.toLowerCase()} (≥${corte} kg, umbral EWGSOP2). Buena reserva muscular.`;
+    } else {
+      // Squegg / consumo: no intercambiable con cortes clínicos
+      interp = `${v.toFixed(1)} kg medido con Squegg (dispositivo de consumo). Valor orientativo y útil para seguimiento del mismo paciente con el mismo aparato; NO es intercambiable con los umbrales clínicos de sarcopenia (validados con dinamómetro hidráulico). Para estratificar riesgo formal, medir con dinamómetro clínico.`;
+    }
+  }
+  return {v, dev, devName, clinico, low, level, interp};
+}
 function indiceTabaquico(){
   const cig=num("h_cig"), anos=num("h_anos");
   if(cig===null||anos===null||cig<=0||anos<=0)return null;
@@ -1020,6 +1168,9 @@ function calc(){
   });
   // antropometría hint
   const b=imc(),s=sct(),r=rt24(),pk=pesoKg();
+  const _dy=dinamometria();
+  const _dh=document.getElementById("dyn_hint");
+  if(_dh)_dh.textContent=_dy?_dy.interp:"";
   const _it=indiceTabaquico();
   const _ite=document.getElementById("h_it");
   if(_ite)_ite.value=(_it!==null)?_it.toFixed(1)+" paq-año":"";
@@ -1071,7 +1222,7 @@ function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replac
 function orDash(s){s=(s||"").trim();return s?esc(s):"—";}
 
 function suggestions(){
-  const out=[];
+  const out=[]; // [texto, fase]
   const rcriT=scoreTotal("RCRI"), aubT=scoreTotal("AUB-HAS2");
   const elevated = rcriT>1 || /Alto/.test(val("riesgoq")) || aubT>=2;
   const dasiRaw=scoreTotal("DASI"), mets=dasiMets();
@@ -1079,49 +1230,45 @@ function suggestions(){
   const ntp=num("l_ntprobnp"), bnp=num("l_bnp"), tn=val("l_tn");
   const bioHecho=(ntp!==null||bnp!==null||tn!==""), bioAnormal=(ntp!==null&&ntp>=300)||(bnp!==null&&bnp>92)||(tn==="Elevada (>p99)");
   if(elevated && capLimitada && !bioHecho)
-    out.push("Riesgo elevado con capacidad funcional limitada: es razonable medir NT-proBNP/BNP ± troponina antes de considerar pruebas de imagen (AHA/ACC 2024, Clase 2a).");
+    out.push(["Riesgo elevado con capacidad funcional limitada: es razonable medir NT-proBNP/BNP ± troponina antes de considerar pruebas de imagen (AHA/ACC 2024, Clase 2a).","pre"]);
   if(elevated && bioAnormal)
-    out.push("Biomarcadores elevados: vigilancia de troponina postoperatoria (24-48 h) por riesgo de lesión miocárdica tras cirugía no cardíaca (MINS) y manejo en equipo multidisciplinario.");
+    out.push(["Biomarcadores elevados: vigilancia de troponina postoperatoria (24-48 h) por riesgo de MINS y manejo en equipo multidisciplinario.","post"]);
   if(elevated && !capLimitada)
-    out.push("Riesgo elevado con capacidad funcional adecuada: proceder sin pruebas cardíacas adicionales; optimizar tratamiento médico dirigido por guías.");
+    out.push(["Riesgo elevado con capacidad funcional adecuada: proceder sin pruebas cardíacas adicionales; optimizar tratamiento médico dirigido por guías.","pre"]);
   if(!elevated)
-    out.push("Riesgo bajo: no se requieren pruebas cardíacas preoperatorias adicionales (evitar sobreestudio y retrasos innecesarios).");
+    out.push(["Riesgo bajo: no se requieren pruebas cardíacas preoperatorias adicionales (evitar sobreestudio y retrasos innecesarios).","pre"]);
   const at=scoreTotal("ARISCAT");
-  if(at>=45)out.push("ARISCAT alto: espirometría incentiva, ventilación protectora y monitoreo respiratorio postoperatorio.");
-  else if(at>=26)out.push("ARISCAT intermedio: técnicas de expansión pulmonar y movilización temprana.");
+  if(at>=45)out.push(["ARISCAT alto: espirometría incentiva, ventilación protectora y monitoreo respiratorio postoperatorio.","post"]);
+  else if(at>=26)out.push(["ARISCAT intermedio: técnicas de expansión pulmonar y movilización temprana.","post"]);
   const ct=scoreTotal("Caprini");
-  if(ct>=3)out.push("Tromboprofilaxis farmacológica + mecánica (Caprini).");
-  else if(ct>=1)out.push("Profilaxis mecánica de TVP (compresión neumática intermitente o medias de compresión graduada).");
+  if(ct>=3)out.push(["Tromboprofilaxis farmacológica + mecánica indicada (Caprini alto).","post"]);
+  else if(ct>=1)out.push(["Profilaxis mecánica de TVP (compresión neumática intermitente o medias de compresión graduada).","trans"]);
   const sb=scoreTotal("STOP-BANG");
-  if(sb>=5)out.push("Alto riesgo de SAOS: precaución con opioides, oximetría postoperatoria, considerar CPAP.");
-  else if(sb>=3)out.push("Riesgo intermedio de SAOS: vigilancia respiratoria postoperatoria.");
+  if(sb>=5)out.push(["Alto riesgo de SAOS: precaución con opioides, oximetría postoperatoria, considerar CPAP.","post"]);
+  else if(sb>=3)out.push(["Riesgo intermedio de SAOS: vigilancia respiratoria postoperatoria.","post"]);
   const cfsV=parseInt(val("cfs_sel"))||0;
   if(scoreTotal("mFI-5")>=2 || cfsV>=5)
-    out.push("Fragilidad: prehabilitación (acondicionamiento y soporte nutricional), valoración geriátrica y decisión compartida sobre metas de cuidado.");
-  if(scoreTotal("Apfel")>=3)out.push("Apfel ≥3: profilaxis multimodal de NVPO (2+ antieméticos de distinta clase).");
-  if(scoreTotal("Charlson")>=5)out.push("Comorbilidad alta (Charlson ≥5): optimización médica y considerar nivel de cuidados postoperatorios.");
-  // SGLT2i — relevante en diabetes
+    out.push(["Fragilidad: prehabilitación (acondicionamiento y soporte nutricional), valoración geriátrica y decisión compartida sobre metas de cuidado.","pre"]);
+  if(scoreTotal("Apfel")>=3)out.push(["Apfel ≥3: profilaxis multimodal de NVPO (2+ antieméticos de distinta clase).","trans"]);
+  if(scoreTotal("Charlson")>=5)out.push(["Comorbilidad alta (Charlson ≥5): optimización médica y considerar nivel de cuidados postoperatorios.","pre"]);
   if(chk("rcri_dm")||chk("m1")||chk("ch10")||chk("ch11"))
-    out.push("Si el paciente usa inhibidores de SGLT2 (empagliflozina, dapagliflozina, canagliflozina): suspenderlos 3-4 días antes de la cirugía por riesgo de cetoacidosis euglucémica perioperatoria (AHA/ACC 2024).");
+    out.push(["Si usa inhibidores de SGLT2 (empagliflozina, dapagliflozina, canagliflozina): suspenderlos 3-4 días antes de la cirugía por riesgo de cetoacidosis euglucémica perioperatoria.","pre"]);
+  const dyn=dinamometria();
+  if(dyn && dyn.clinico && dyn.low)
+    out.push(["Dinamometría con fuerza de prensión baja (umbral de sarcopenia): optimización nutricional con aporte proteico y prehabilitación con ejercicio de resistencia; predice mayor riesgo de complicaciones y mortalidad.","pre"]);
   const itq=indiceTabaquico();
-  if(itq!==null&&itq>=10)out.push(`Índice tabáquico ${itq.toFixed(1)} paquetes-año: recomendar cese del tabaco al menos 4 semanas antes de la cirugía; reduce complicaciones respiratorias y de la herida quirúrgica.`);
-  const r=rt24();if(r!==null)out.push(`Terapia hídrica basal: ${Math.round(r)} ml/24h (Holliday-Segar). Ajustar a pérdidas quirúrgicas y estado clínico.`);
+  if(itq!==null&&itq>=10)out.push([`Índice tabáquico ${itq.toFixed(1)} paquetes-año: recomendar cese del tabaco al menos 4 semanas antes de la cirugía.`,"pre"]);
+  const r=rt24();if(r!==null)out.push([`Terapia hídrica basal: ${Math.round(r)} ml/24h (Holliday-Segar). Ajustar a pérdidas quirúrgicas y estado clínico.`,"trans"]);
   return out;
 }
 
 function render(){
-  // recSuggest
-  const sug=suggestions();
-  document.getElementById("recSuggest").innerHTML =
-    sug.length? sug.map(s=>`<div class="rec-suggest">• ${esc(s)}</div>`).join("")
-              : `<div style="font-size:11px;color:var(--muted);font-style:italic">Se generarán al calcular los scores.</div>`;
-  // compile recommendations
-  let recs=[...sug];
-  REC_BANK.forEach((t,i)=>{if(chk("rb_"+i))recs.push(t);});
-  const free=val("recFree");
-  if(free)free.split(/\n+/).forEach(l=>{if(l.trim())recs.push(l.trim());});
-  // dedup preserving order
-  recs=[...new Set(recs)];
+  renderRecs();
+  // compilar recomendaciones seleccionadas, agrupadas por fase
+  const chosen=currentRecs().filter(r=>r.on);
+  const recPre=chosen.filter(r=>r.fase==="pre").map(r=>r.texto);
+  const recTrans=chosen.filter(r=>r.fase==="trans").map(r=>r.texto);
+  const recPost=chosen.filter(r=>r.fase==="post").map(r=>r.texto);
 
   // ---- build note ----
   const tipo=val("tipo");
@@ -1208,6 +1355,10 @@ function render(){
   <h2>Examen físico</h2>
   <table><tr><td class="lab">Signos vitales</td><td colspan="3">${svLine}</td></tr>
   <tr><td class="lab">Antropometría</td><td colspan="3">${antroLine}</td></tr>
+  ${(function(){const d=dinamometria();if(!d)return "";
+    const mano=val("dyn_hand")?" ("+val("dyn_hand").toLowerCase()+")":"";
+    const chip=d.clinico&&val("sexo")?` <span class="chip ${d.low?"r-alto":"r-bajo"}">${d.level}</span>`:"";
+    return `<tr><td class="lab">Fuerza de prensión${mano}</td><td colspan="3"><b>${d.v.toFixed(1)} kg</b> · ${esc(d.devName)}${chip}<br><span style="color:#5b6b7a;font-size:10.5px">${esc(d.interp)}</span></td></tr>`;})()}
   <tr><td class="lab">Estado general</td><td colspan="3">${orDash(val("ef_gen"))}</td></tr>
   <tr><td class="lab">Cabeza y cuello</td><td colspan="3">${orDash(val("ef_cab"))}</td></tr>
   <tr><td class="lab">Tórax</td><td colspan="3">${orDash(val("ef_tor"))}</td></tr>
@@ -1262,7 +1413,12 @@ function render(){
   <td class="lab">Requerimiento 24 h</td><td>${rt24()!==null?Math.round(rt24())+" ml":"—"}</td></tr></table>
 
   <h2>Recomendaciones</h2>
-  <div class="recs">${recs.length?recs.map(r=>`<div class="ri">${esc(r)}</div>`).join(""):'<div class="muted">—</div>'}</div>
+  ${(function(){
+    const bloque=(titulo,arr)=> arr.length? `<div class="rec-block"><div class="rec-block-hd">${titulo}</div>
+      <div class="recs">${arr.map(r=>`<div class="ri">${esc(r)}</div>`).join("")}</div></div>`:"";
+    const html=bloque("Previo a cirugía",recPre)+bloque("Transoperatorio",recTrans)+bloque("Postoperatorio",recPost);
+    return html||'<div class="muted">Sin recomendaciones seleccionadas.</div>';
+  })()}
 
   <div class="sign"><div class="line"></div>
     <div class="nm">Dr. Denis W. Cotzojay Pirir</div>
@@ -1321,6 +1477,12 @@ function downloadWord(){
     .algo.high{background:#fdeeea;color:#96341f}
     .recs{font-size:9.5pt}
     .recs .ri{padding:2pt 0}
+    .rec-block{margin-bottom:8pt}
+    .rec-block-hd{font-size:8pt;font-weight:bold;text-transform:uppercase;color:#fff;
+       padding:2pt 8pt;border-radius:3pt;display:inline-block;margin-bottom:3pt}
+    .rec-block:nth-child(1) .rec-block-hd{background:#3a7ca5}
+    .rec-block:nth-child(2) .rec-block-hd{background:#9a6f2e}
+    .rec-block:nth-child(3) .rec-block-hd{background:#2e7d5b}
     .muted{color:#8794a0;font-style:italic;font-size:8.5pt}
     .sign{margin-top:26pt;text-align:center}
     .sign .line{border-top:.75pt solid #34434f;width:190pt;margin:0 auto 3pt}
