@@ -78,6 +78,20 @@
        border-color:var(--primary);box-shadow:0 0 0 3px rgba(14,124,133,.15);background:#fff}
   .field input,.field select,.field textarea{transition:border-color .15s,box-shadow .15s,background .15s}
   .field textarea{resize:vertical;min-height:44px}
+  /* ---- Dictado por voz ---- */
+  .mic-wrap{position:relative}
+  .mic-btn{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:6px;
+       border:1px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;
+       justify-content:center;font-size:13px;color:var(--muted);transition:.15s;z-index:2;padding:0}
+  .mic-btn:hover{background:var(--teal-soft);color:var(--primary-dark);border-color:var(--primary)}
+  .mic-btn.rec{background:#e0392b;color:#fff;border-color:#e0392b;animation:micpulse 1.2s infinite}
+  @keyframes micpulse{0%,100%{box-shadow:0 0 0 0 rgba(224,57,43,.5)}50%{box-shadow:0 0 0 5px rgba(224,57,43,0)}}
+  .field.mic-wrap textarea,.field.mic-wrap input{padding-right:34px}
+  .dict-tip{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#12324a;color:#fff;
+       padding:9px 16px;border-radius:8px;font-size:12.5px;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:200;
+       display:none;align-items:center;gap:10px;max-width:92vw}
+  .dict-tip.show{display:flex}
+  .dict-tip .dot{width:9px;height:9px;border-radius:50%;background:#e0392b;animation:micpulse 1.2s infinite;flex:0 0 auto}
   .hint{font-size:11px;color:var(--muted);font-style:italic;margin-top:2px}
   /* ---- Score blocks ---- */
   .score{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
@@ -220,6 +234,15 @@
   .note .algo.mid{background:#fdf6e9;color:#7a5a12;border-left:3px solid #d8a83c}
   .note .algo.high{background:#fdeeea;color:#96341f;border-left:3px solid #d0654c;font-weight:500}
   .note .recs{font-size:11.5px;line-height:1.6;padding:2px 0}
+  .note .dm-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 20px}
+  @media(max-width:620px){.note .dm-grid{grid-template-columns:1fr}}
+  .note .dm-sub{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+       color:#0a5157;margin:9px 0 3px;padding-bottom:2px;border-bottom:1px solid #d7e6e6}
+  .note .dm-tbl{width:100%;border-collapse:collapse;margin:4px 0 2px;max-width:340px}
+  .note .dm-tbl th{background:#0e7c85;color:#fff;padding:5px 10px;font-size:10px;text-align:left;
+       text-transform:uppercase;letter-spacing:.04em}
+  .note .dm-tbl td{padding:4px 10px;font-size:11.5px;border-bottom:1px solid #edf1f3}
+  .note .dm-tbl tr:nth-child(even) td{background:#f5fafa}
   .note .recs-ol{margin:4px 0 0;padding-left:22px;font-size:11.5px;line-height:1.6}
   .note .recs-ol li{margin-bottom:5px;padding-left:4px}
   .note .recs-ol li::marker{color:#0e7c85;font-weight:700}
@@ -1009,6 +1032,7 @@ function relevance(name){
 /* ================= CLÍNICA / LOGO ================= */
 function onClinicaChange(){
   document.getElementById("clinicaOtra").style.display = (val("clinica")==="otra")?"block":"none";
+  injectMics();
   render();
 }
 function loadLogo(ev){
@@ -1131,6 +1155,68 @@ function planTromboprofilaxis(){
   P.push(dur);
   P.push("Combinar siempre con profilaxis mecánica (compresión neumática intermitente o medias de compresión graduada) mientras el paciente permanezca encamado.");
   P.push("Si se planea anestesia neuroaxial: respetar 12 h desde la última dosis profiláctica de HBPM para la punción o el retiro del catéter (24 h si dosis terapéutica).");
+  return P;
+}
+
+/* ================= MANEJO PERIOPERATORIO DE DIABETES ================= */
+// ADA 2024/2025, Anesthesiology 2017, CPOC 2022. Esquemas de corrección por función renal.
+function tieneDiabetes(){
+  return chk("rcri_dm")||chk("m1")||chk("ch10")||chk("ch11")||
+         /diabet|dm2|dm1|dm |mellitus/i.test(val("a_med"))||
+         /insulin|metformin|glargin|nph|empagli|dapagli|canagli|glp|semaglu|dulaglu|gliclazi|glibencl|sitaglip|linaglip/i.test(val("a_med_act"));
+}
+function tfgDiabetes(){
+  const t=num("at_tfg"); if(t!==null)return t;
+  const cr=num("l_cr"), edad=num("edad"), sexo=val("sexo"), pk=pesoKg();
+  if(cr===null||edad===null||pk===null)return null;
+  let cl=((140-edad)*pk)/(72*cr);
+  if(sexo==="Femenino")cl*=0.85;
+  return Math.round(cl);
+}
+function esquemaInsulina(sensible){
+  const filas=[
+    ["< 150 mg/dl","0 U","0 U"],
+    ["150-199","2 U","1 U"],
+    ["200-249","4 U","2 U"],
+    ["250-299","6 U","3 U"],
+    ["300-349","8 U","4 U"],
+    ["≥ 350","10 U + avisar","5 U + avisar"],
+  ];
+  return {filas, sensible};
+}
+function planDiabetes(){
+  if(!tieneDiabetes())return null;
+  const tfg=tfgDiabetes();
+  const renalBaja = (tfg!==null && tfg<45);
+  const edad=num("edad");
+  const sensible = renalBaja || (edad!==null&&edad>70);
+  const P={ayuno:[],farmacos:[],insulina:[],esquema:null,monitoreo:[],tfg,renalBaja,sensible};
+
+  P.ayuno.push("Programar al paciente de primero en la lista quirúrgica para minimizar el tiempo de ayuno.");
+  P.ayuno.push("Permitir líquidos claros hasta 2 h antes; en diabéticos con riesgo de hipoglucemia en ayuno, estimular su ingesta.");
+  P.ayuno.push("Vigilar gastroparesia diabética: puede retrasar el vaciamiento gástrico; individualizar y considerar ecografía gástrica si hay duda.");
+
+  P.farmacos.push("Metformina: suspender el día de la cirugía (riesgo de acidosis láctica en hipoperfusión o uso de contraste); reiniciar al recuperar la vía oral y confirmar función renal.");
+  P.farmacos.push("Inhibidores de SGLT2 (empagliflozina, dapagliflozina, canagliflozina): suspender 3-4 días antes por riesgo de cetoacidosis euglucémica perioperatoria.");
+  P.farmacos.push("Sulfonilureas (glibenclamida, gliclazida) y meglitinidas: suspender la mañana de la cirugía por riesgo de hipoglucemia en ayuno (mayor si hay deterioro renal).");
+  P.farmacos.push("Agonistas GLP-1 (semaglutida, dulaglutida, liraglutida): retrasan el vaciamiento gástrico; valorar suspensión según esquema y riesgo de broncoaspiración (evidencia aún limitada).");
+  P.farmacos.push("iDPP-4 (sitagliptina, linagliptina): pueden continuarse; bajo riesgo de hipoglucemia.");
+
+  P.insulina.push("Insulina basal (glargina, detemir, degludec): administrar 75-80% de la dosis la noche previa y la mañana de la cirugía.");
+  P.insulina.push("NPH: administrar la mitad (50%) de la dosis la mañana de la cirugía.");
+  P.insulina.push("Insulina prandial (rápida/regular de las comidas): suspender al iniciar el ayuno.");
+  P.insulina.push("Premezcladas (70/30, 75/25): la mañana de la cirugía usar mitad de la dosis o solo el componente basal reducido.");
+  if(renalBaja)
+    P.insulina.push(`⚠ TFG ${tfg} ml/min: el riñón depura 30-80% de la insulina y su efecto se prolonga. Reducir aún más la basal (considerar ~50%) y extremar la vigilancia de hipoglucemia.`);
+
+  P.esquema = esquemaInsulina(sensible);
+
+  P.monitoreo.push("Glucometría capilar cada 2-4 h mientras el paciente esté en ayuno.");
+  P.monitoreo.push("Meta perioperatoria: 140-180 mg/dl.");
+  P.monitoreo.push("Hipoglucemia (<70 mg/dl o síntomas): en ayuno, 10-20 g de dextrosa IV (20-40 ml de dextrosa al 50%); si tolera vía oral, 15 g de carbohidrato. Recontrolar en 15 min.");
+  P.monitoreo.push("Postoperatorio: preferir esquema basal-bolo sobre la escala móvil aislada; reiniciar el tratamiento habitual al recuperar la ingesta.");
+  if(renalBaja)
+    P.monitoreo.push("Deterioro renal: mayor riesgo de hipoglucemia por depuración reducida; considerar metas en el extremo alto del rango y controles más frecuentes.");
   return P;
 }
 
@@ -1492,6 +1578,25 @@ function render(){
     <div class="muted" style="margin-bottom:5px">Suspensión y reinicio de anticoagulantes y antiagregantes (CHEST 2022)</div>
     <div class="recs">${pa.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
+  ${(function(){const d=planDiabetes();if(!d)return "";
+    const li=arr=>arr.map(x=>`<div class="ri">${esc(x)}</div>`).join("");
+    const esq=d.esquema;
+    const tabla=`<table class="dm-tbl"><tr><th>Glucemia capilar</th><th>Insulina rápida SC${esq.sensible?" (dosis reducida*)":""}</th></tr>
+      ${esq.filas.map(f=>`<tr><td>${f[0]}</td><td><b>${esq.sensible?f[2]:f[1]}</b></td></tr>`).join("")}</table>
+      <div class="muted" style="margin-top:3px">${esq.sensible
+        ?"*Esquema de dosis reducida por función renal disminuida y/o edad &gt;70 años (mayor riesgo de hipoglucemia). Administrar cada 4-6 h según glucometría; no acumular dosis."
+        :"Esquema estándar de corrección. Administrar cada 4-6 h según glucometría. En función renal disminuida (TFG &lt;45) usar dosis reducidas."}</div>`;
+    return `<h2>Manejo perioperatorio de la diabetes</h2>
+    <div class="muted" style="margin-bottom:6px">${d.tfg!==null?`TFG estimada: ${d.tfg} ml/min${d.renalBaja?" · función renal disminuida":" · función renal conservada"}. `:""}Meta glucémica 140-180 mg/dl (ADA 2024/2025)</div>
+    <div class="dm-grid">
+      <div class="dm-col"><div class="dm-sub">Ayuno</div><div class="recs">${li(d.ayuno)}</div>
+        <div class="dm-sub">Fármacos no insulínicos</div><div class="recs">${li(d.farmacos)}</div></div>
+      <div class="dm-col"><div class="dm-sub">Insulina</div><div class="recs">${li(d.insulina)}</div></div>
+    </div>
+    <div class="dm-sub">Esquema de corrección de insulina rápida</div>
+    ${tabla}
+    <div class="dm-sub">Monitoreo y metas</div><div class="recs">${li(d.monitoreo)}</div>`;})()}
+
   <h2>Plan hídrico</h2>
   <table><tr><td class="lab">Superficie corporal</td><td>${s!==null?s.toFixed(2)+" m²":"—"}</td>
   <td class="lab">Requerimiento 24 h</td><td>${rt24()!==null?Math.round(rt24())+" ml":"—"}</td></tr></table>
@@ -1509,7 +1614,7 @@ function render(){
     <div class="sm">${esc(cl.nombre)}</div>
     <div class="sm" style="font-size:9.5px">${esc([cl.direccion,cl.telefono].filter(Boolean).join(" · "))}</div>
   </div>
-  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
+  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2024/2025» (Diabetes Care. 2024;47(Suppl.1):S295 y 2025;48(Suppl.1):S321); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022). Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
   </div>`;
 
   document.getElementById("note").innerHTML=note;
@@ -1589,6 +1694,10 @@ function downloadWord(){
     .algo.high{background:#fdeeea;color:#96341f;border-left-color:#d0654c}
     .recs-ol{font-size:9.5pt;padding-left:20pt;margin:3pt 0}
     .recs-ol li{margin-bottom:3pt}
+    .dm-sub{font-size:9pt;font-weight:bold;text-transform:uppercase;color:#0a5157;margin:8pt 0 2pt;border-bottom:.5pt solid #d7e6e6}
+    .dm-tbl{border-collapse:collapse;margin:4pt 0;width:60%}
+    .dm-tbl th{background:#0e7c85;color:#fff;padding:3pt 8pt;font-size:8.5pt;text-align:left}
+    .dm-tbl td{padding:3pt 8pt;font-size:9pt;border-bottom:.5pt solid #e4ebee}
     .muted{color:#8794a0;font-style:italic;font-size:8.5pt}
     .sign{margin-top:26pt;text-align:center}
     .sign .line{border-top:.75pt solid #34434f;width:200pt;margin:0 auto 3pt}
@@ -1733,6 +1842,97 @@ function importFileToLibrary(ev){
   r.readAsText(f);ev.target.value="";
 }
 
+/* ================= DICTADO POR VOZ (Web Speech API) ================= */
+const DICT={rec:null, activeEl:null, activeBtn:null, base:""};
+function dictSupported(){
+  return ('webkitSpeechRecognition' in window)||('SpeechRecognition' in window);
+}
+// campos que reciben micrófono: textareas + inputs de texto clínicos
+const DICT_IDS=["a_med","a_qx","a_trauma","a_alerg","a_go","a_med_act",
+  "h_ej","h_alc","h_tab","ef_gen","ef_cab","ef_tor","ef_abd","ef_ext","ef_neuro","ef_piel",
+  "ekg","rx","l_otros","proc","cl_nombre","cl_dir"];
+// además, cualquier textarea que se agregue dinámicamente (recomendaciones libres)
+function injectMics(){
+  if(!dictSupported())return;
+  DICT_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el || el.dataset.mic)return;
+    addMicTo(el);
+  });
+}
+function addMicTo(el){
+  el.dataset.mic="1";
+  const field=el.closest(".field")||el.parentElement;
+  if(field && !field.classList.contains("mic-wrap"))field.classList.add("mic-wrap");
+  const btn=document.createElement("button");
+  btn.type="button"; btn.className="mic-btn"; btn.title="Dictar en este campo";
+  btn.innerHTML="🎤";
+  btn.onclick=(e)=>{e.preventDefault();toggleDictation(el,btn);};
+  // colocar el botón como hermano del campo dentro del wrapper
+  (field||el.parentElement).appendChild(btn);
+}
+function toggleDictation(el,btn){
+  if(!dictSupported()){alert("Este navegador no admite dictado por voz. Use Chrome, Edge o Safari.");return;}
+  // si ya está grabando en este campo → detener
+  if(DICT.rec && DICT.activeEl===el){stopDictation();return;}
+  // si graba en otro campo → detener antes
+  if(DICT.rec){stopDictation();}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();
+  rec.lang="es-GT"; rec.continuous=true; rec.interimResults=true;
+  DICT.rec=rec; DICT.activeEl=el; DICT.activeBtn=btn;
+  DICT.base=el.value ? el.value.replace(/\s+$/,"")+" " : "";
+  btn.classList.add("rec"); showDictTip(true);
+  let finalTxt="";
+  rec.onresult=(ev)=>{
+    let interim="";
+    for(let i=ev.resultIndex;i<ev.results.length;i++){
+      let t=ev.results[i][0].transcript;
+      if(ev.results[i].isFinal){finalTxt+=aplicarComandos(t);}
+      else interim+=t;
+    }
+    el.value=DICT.base+finalTxt+interim;
+    el.dispatchEvent(new Event("input",{bubbles:true}));
+  };
+  rec.onerror=(ev)=>{
+    if(ev.error==="not-allowed"||ev.error==="service-not-allowed")
+      alert("El navegador bloqueó el micrófono. Permita el acceso al micrófono para dictar.");
+    stopDictation();
+  };
+  rec.onend=()=>{ // si se corta solo y seguíamos activos, limpiar UI
+    if(DICT.activeBtn===btn){btn.classList.remove("rec");showDictTip(false);DICT.rec=null;DICT.activeEl=null;}
+  };
+  try{rec.start();}catch(e){stopDictation();}
+}
+function stopDictation(){
+  if(DICT.rec){try{DICT.rec.stop();}catch(e){}}
+  if(DICT.activeBtn)DICT.activeBtn.classList.remove("rec");
+  showDictTip(false);
+  DICT.rec=null; DICT.activeEl=null; DICT.activeBtn=null;
+}
+// comandos de puntuación por voz
+function aplicarComandos(t){
+  return t
+    .replace(/\s*\b(punto y aparte|nueva línea|nueva linea|siguiente línea|siguiente linea)\b\s*/gi,"\n")
+    .replace(/\s*\b(punto y seguido|punto)\b\s*/gi,". ")
+    .replace(/\s*\b(coma)\b\s*/gi,", ")
+    .replace(/\s*\b(dos puntos)\b\s*/gi,": ")
+    .replace(/\s*\b(punto y coma)\b\s*/gi,"; ")
+    .replace(/\s*\b(abrir paréntesis|abre paréntesis)\b\s*/gi," (")
+    .replace(/\s*\b(cerrar paréntesis|cierra paréntesis)\b\s*/gi,") ")
+    .replace(/ +/g," ");
+}
+function showDictTip(on){
+  let tip=document.getElementById("dictTip");
+  if(!tip){
+    tip=document.createElement("div"); tip.id="dictTip"; tip.className="dict-tip";
+    tip.innerHTML=`<span class="dot"></span><span>Dictando… diga "punto", "coma" o "nueva línea" para puntuar.</span>
+      <button onclick="stopDictation()" style="background:#e0392b;color:#fff;border:none;border-radius:5px;padding:3px 10px;cursor:pointer;font-size:12px;font-weight:600">Detener</button>`;
+    document.body.appendChild(tip);
+  }
+  tip.classList.toggle("show",on);
+}
+
 /* ================= INIT ================= */
 buildTipos();buildScores();buildRecBank();
 (function(){
@@ -1744,6 +1944,11 @@ buildTipos();buildScores();buildRecBank();
     document.getElementById("fecha").value=new Date().toISOString().slice(0,10);
     applyPreset();
     calc();
+  }
+  injectMics();
+  if(!dictSupported()){
+    // ocultar cualquier rastro; no romper nada
+    console.log("Dictado por voz no disponible en este navegador.");
   }
 })();
 </script>
