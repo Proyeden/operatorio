@@ -167,6 +167,20 @@
        border-radius:5px;background:var(--input)}
   /* ---- Recs ---- */
   .rec-item{display:flex;align-items:flex-start;gap:8px;padding:4px 6px;font-size:12.5px;cursor:pointer;border-radius:6px}
+  /* secciones expandibles */
+  .sec-row{border-bottom:1px solid #eef2f4}
+  .sec-head{display:flex;align-items:center;gap:6px;padding:6px 4px}
+  .sec-caret{background:none;border:none;cursor:pointer;font-size:12px;color:var(--primary);
+       width:18px;height:18px;padding:0;flex:0 0 auto;border-radius:4px}
+  .sec-caret:hover{background:var(--teal-soft)}
+  .sec-check{display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1}
+  .sec-check input{accent-color:var(--primary);flex:0 0 auto}
+  .sec-lines{padding:2px 0 8px 26px;background:#fafcfc}
+  .sec-line{display:flex;align-items:flex-start;gap:7px;padding:4px 8px;font-size:11.5px;cursor:pointer;
+       border-radius:5px;color:#40525f}
+  .sec-line:hover{background:#eef6f6}
+  .sec-line input{accent-color:var(--primary);margin-top:2px;flex:0 0 auto}
+  .sec-line-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 8px}
   .rec-item:hover{background:#f4f8f9}
   .rec-item input{margin-top:2px;accent-color:var(--primary);flex:0 0 auto}
   .rec-tip{font-size:11px;color:var(--muted);background:#f5f9fa;border-radius:6px;padding:8px 10px;margin-bottom:12px;line-height:1.5}
@@ -1256,6 +1270,12 @@ function planDiabetes(){
     P.monitoreo.push("Deterioro renal: mayor riesgo de hipoglucemia por depuración reducida; considerar metas en el extremo alto del rango y controles más frecuentes.");
   return P;
 }
+// Líneas de diabetes como lista plana (para selección línea por línea)
+function diabetesLines(){
+  const d=planDiabetes();
+  if(!d)return [];
+  return [...d.ayuno, ...d.farmacos, ...d.insulina, ...d.monitoreo];
+}
 
 /* ================= ANTITROMBÓTICOS (CHEST 2022) ================= */
 // Riesgo hemorrágico por tipo de cirugía (Douketis 2022, Tabla de riesgo de sangrado)
@@ -1474,42 +1494,80 @@ function suggestions(){
 /* ================= SECCIONES OPCIONALES DE LA NOTA ================= */
 // id, título, ¿aplica automáticamente? (si la función devuelve true, se auto-activa)
 const SECCIONES=[
-  {id:"algo",  label:"Algoritmo cardíaco perioperatorio", auto:()=>true},
-  {id:"ayuno", label:"Ayuno preoperatorio", auto:()=>true},
-  {id:"profx", label:"Profilaxis antibiótica", auto:()=>true},
-  {id:"tromboprofx", label:"Tromboprofilaxis farmacológica", auto:()=>scoreTotal("Caprini")>=3},
-  {id:"antitrombo", label:"Manejo antitrombótico (anticoag./antiagreg.)", auto:()=>planAntitrombotico().length>0},
-  {id:"diabetes", label:"Manejo perioperatorio de diabetes", auto:()=>tieneDiabetes()},
-  {id:"hidrico", label:"Plan hídrico", auto:()=>true},
+  {id:"algo",  label:"Algoritmo cardíaco perioperatorio", auto:()=>true, lines:false},
+  {id:"ayuno", label:"Ayuno preoperatorio", auto:()=>true, lines:()=>planAyuno()},
+  {id:"profx", label:"Profilaxis antibiótica", auto:()=>true, lines:false},
+  {id:"tromboprofx", label:"Tromboprofilaxis farmacológica", auto:()=>scoreTotal("Caprini")>=3, lines:()=>planTromboprofilaxis()},
+  {id:"antitrombo", label:"Manejo antitrombótico (anticoag./antiagreg.)", auto:()=>planAntitrombotico().length>0, lines:()=>planAntitrombotico()},
+  {id:"diabetes", label:"Manejo perioperatorio de diabetes", auto:()=>tieneDiabetes(), lines:()=>diabetesLines()},
+  {id:"hidrico", label:"Plan hídrico", auto:()=>true, lines:false},
 ];
-let SEC_STATE={};        // id -> bool (estado actual)
-let SEC_USERSET={};      // id -> bool (el usuario lo tocó manualmente)
+let SEC_STATE={};        // id -> bool (sección activa)
+let SEC_USERSET={};      // id -> bool (usuario tocó la sección)
+let LINE_OFF={};         // "secid|textohash" -> true si el usuario la desmarcó
+let SEC_OPEN={};         // id -> bool (sección expandida en el panel)
+
+function lineKey(secid,texto){return secid+"|"+texto.slice(0,60);}
+function lineOn(secid,texto){return !LINE_OFF[lineKey(secid,texto)];}
+// filtra un arreglo de líneas dejando solo las activas
+function filtLines(secid,arr){return arr.filter(t=>lineOn(secid,t));}
 
 function buildSecToggles(){
   const box=document.getElementById("secToggles");
   if(!box)return;
-  box.innerHTML=SECCIONES.map(s=>
-    `<label class="rec-item" style="justify-content:space-between">
-       <span style="display:flex;align-items:center;gap:8px">
-         <input type="checkbox" id="sec_${s.id}" onchange="onSecToggle('${s.id}',this.checked)">
-         ${s.label}</span>
-       <span class="rec-auto" id="secauto_${s.id}" style="display:none">sugerida</span>
-     </label>`).join("");
-  // inicializar estados según auto
+  box.innerHTML=SECCIONES.map(s=>{
+    const hasLines=!!s.lines;
+    const caret=hasLines?`<button class="sec-caret" id="caret_${s.id}" onclick="toggleSecOpen(event,'${s.id}')" title="Ver líneas">▸</button>`:`<span style="width:18px;display:inline-block"></span>`;
+    return `<div class="sec-row">
+      <div class="sec-head">
+        ${caret}
+        <label class="sec-check"><input type="checkbox" id="sec_${s.id}" onchange="onSecToggle('${s.id}',this.checked)">${s.label}</label>
+        <span class="rec-auto" id="secauto_${s.id}" style="display:none">sugerida</span>
+      </div>
+      <div class="sec-lines" id="lines_${s.id}" style="display:none"></div>
+    </div>`;
+  }).join("");
   SECCIONES.forEach(s=>{ SEC_STATE[s.id] = !!s.auto(); });
   refreshSecToggles();
+}
+function toggleSecOpen(ev,id){
+  ev.preventDefault();ev.stopPropagation();
+  SEC_OPEN[id]=!SEC_OPEN[id];
+  const car=document.getElementById("caret_"+id);
+  if(car)car.textContent=SEC_OPEN[id]?"▾":"▸";
+  renderSecLines(id);
+  document.getElementById("lines_"+id).style.display=SEC_OPEN[id]?"block":"none";
+}
+function renderSecLines(id){
+  const s=SECCIONES.find(x=>x.id===id);
+  if(!s||!s.lines)return;
+  const box=document.getElementById("lines_"+id);
+  if(!box)return;
+  const arr=s.lines()||[];
+  if(!arr.length){box.innerHTML=`<div class="sec-line-empty">No hay líneas para este paciente.</div>`;return;}
+  box.innerHTML=arr.map(t=>{
+    const k=lineKey(id,t);
+    return `<label class="sec-line"><input type="checkbox" ${lineOn(id,t)?"checked":""}
+       onchange="onLineToggle('${id}','${k.replace(/'/g,"\\'")}',this.checked)">
+       <span>${esc(t)}</span></label>`;
+  }).join("");
+}
+function onLineToggle(secid,key,on){
+  if(on)delete LINE_OFF[key]; else LINE_OFF[key]=true;
+  render();
 }
 function onSecToggle(id,on){
   SEC_STATE[id]=on; SEC_USERSET[id]=true; render();
 }
 function refreshSecToggles(){
-  // recalcular auto para las que el usuario no ha tocado
   SECCIONES.forEach(s=>{
     if(!SEC_USERSET[s.id]) SEC_STATE[s.id]=!!s.auto();
     const cb=document.getElementById("sec_"+s.id);
     if(cb)cb.checked=SEC_STATE[s.id];
     const badge=document.getElementById("secauto_"+s.id);
     if(badge)badge.style.display = (s.auto()&&!SEC_USERSET[s.id])?"inline-block":"none";
+    // refrescar líneas abiertas (por si cambió el contenido)
+    if(SEC_OPEN[s.id])renderSecLines(s.id);
   });
 }
 function secOn(id){ return SEC_STATE[id]!==false; }
@@ -1646,26 +1704,27 @@ function render(){
   <div class="muted" style="margin-bottom:5px">Enfoque escalonado AHA/ACC 2024: riesgo calculado → capacidad funcional (DASI) → biomarcadores → imagen selectiva</div>
   <div class="algo ${algoClass}">${esc(algo)}</div>`:""}
 
-  ${secOn("ayuno")?`<h2>Ayuno preoperatorio</h2>
-  <div class="recs">${planAyuno().map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:""}
+  ${(function(){if(!secOn("ayuno"))return "";const L=filtLines("ayuno",planAyuno());if(!L.length)return "";
+    return `<h2>Ayuno preoperatorio</h2>
+  <div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
   ${secOn("profx")?`<h2>Profilaxis antibiótica sugerida</h2>
   <table><tr><td class="lab">Elección</td><td>${esc(prof[0])}</td></tr>
   <tr><td class="lab">Alternativa / notas</td><td style="color:#5b6b7a">${esc(prof[1])}</td></tr></table>
   <div class="muted" style="margin-top:4px">Administrar 30-60 min antes de la incisión. Redosificar si la cirugía se prolonga (&gt;3-4 h) o hay pérdida hemática significativa.</div>`:""}
 
-  ${(function(){if(!secOn("tromboprofx"))return "";const tp=planTromboprofilaxis();if(!tp.length)return "";
+  ${(function(){if(!secOn("tromboprofx"))return "";const tp=filtLines("tromboprofx",planTromboprofilaxis());if(!tp.length)return "";
     return `<h2>Tromboprofilaxis farmacológica</h2>
     <div class="muted" style="margin-bottom:5px">Indicada por riesgo de tromboembolismo venoso (Caprini ${scoreTotal("Caprini")})</div>
     <div class="recs">${tp.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
-  ${(function(){if(!secOn("antitrombo"))return "";const pa=planAntitrombotico();if(!pa.length)return "";
+  ${(function(){if(!secOn("antitrombo"))return "";const pa=filtLines("antitrombo",planAntitrombotico());if(!pa.length)return "";
     return `<h2>Manejo antitrombótico perioperatorio</h2>
     <div class="muted" style="margin-bottom:5px">Suspensión y reinicio de anticoagulantes y antiagregantes (CHEST 2022)</div>
     <div class="recs">${pa.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
   ${(function(){if(!secOn("diabetes"))return "";const d=planDiabetes();if(!d)return "";
-    const li=arr=>arr.map(x=>`<div class="ri">${esc(x)}</div>`).join("");
+    const li=arr=>filtLines("diabetes",arr).map(x=>`<div class="ri">${esc(x)}</div>`).join("");
     const esq=d.esquema;
     const tabla=`<table class="dm-tbl"><tr><th>Glucemia capilar</th><th>Insulina rápida SC${esq.reducido?" (dosis reducida*)":""}</th></tr>
       ${esq.filas.map(f=>`<tr><td>${f[0]}</td><td><b>${esq.reducido?f[2]:f[1]}</b></td></tr>`).join("")}</table>
