@@ -518,6 +518,24 @@
       <div id="at_plan_prev" class="score-interp" style="margin-top:10px"></div>
     </div></div>
 
+    <div class="card"><h2>Secciones de la nota</h2><div class="card-body">
+      <div class="rec-tip">Active solo las secciones aplicables a este paciente. Se desactivan solas las que no correspondan (p. ej. diabetes o antitrombóticos si no hay datos).</div>
+      <div id="secToggles"></div>
+      <div id="dmOptions" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+        <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:6px">Opciones de diabetes</div>
+        <div class="grid2">
+          <div class="field"><label>Esquema de insulina de corrección</label>
+            <select id="dm_esquema" onchange="render()">
+              <option value="auto">Automático (según TFG/edad)</option>
+              <option value="estandar">Estándar</option>
+              <option value="reducido">Dosis reducida</option>
+            </select></div>
+          <div class="field"><label>TFG (CKD-EPI, automática)</label>
+            <input id="dm_tfg_disp" readonly style="background:#eef6f6;font-weight:700"></div>
+        </div>
+      </div>
+    </div></div>
+
     <div class="card"><h2>Recomendaciones</h2><div class="card-body">
       <div class="rec-tip">Cada recomendación es opcional y editable. Marque las que quiera incluir en la nota; las sugeridas por los scores vienen premarcadas pero puede desmarcarlas. Se agrupan por fase.</div>
       <div class="rec-phase"><div class="rec-phase-hd rec-pre">Previo a cirugía</div><div id="recPre"></div>
@@ -542,10 +560,16 @@
     <div class="modal-head"><span>Pacientes guardados</span><button onclick="closeLibrary()" title="Cerrar">✕</button></div>
     <input class="modal-search" id="libSearch" placeholder="Buscar por nombre…" oninput="renderLibrary()">
     <div class="modal-list" id="libList"></div>
-    <div class="modal-foot">
-      <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFileToLibrary(event)">
-      <button class="btn btn-ghost dark" onclick="document.getElementById('importFile').click()">Importar archivo</button>
-      <button class="btn btn-ghost dark" onclick="exportLibrary()">Respaldar biblioteca</button>
+    <div id="backupInfo" style="font-size:11px;padding:6px 16px;text-align:center;border-top:1px solid var(--line)"></div>
+    <div class="modal-foot" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFileToLibrary(event)">
+        <button class="btn btn-ghost dark" onclick="exportLibrary()">⬇ Respaldar (descargar)</button>
+        <button class="btn btn-ghost dark" onclick="document.getElementById('importFile').click()">⬆ Importar respaldo</button>
+      </div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.5;background:#f5f9fa;border-radius:6px;padding:8px 10px">
+        <b>Para usar en varios dispositivos:</b> en la compu donde trabajas, toca <b>Respaldar</b> y guarda el archivo en tu Google Drive (o USB). En el otro dispositivo, abre la herramienta, entra aquí y toca <b>Importar respaldo</b> seleccionando ese archivo. Los pacientes se fusionan conservando la versión más reciente de cada uno; nada se sube a ningún servidor.
+      </div>
     </div>
   </div>
 </div>
@@ -1165,15 +1189,24 @@ function tieneDiabetes(){
          /diabet|dm2|dm1|dm |mellitus/i.test(val("a_med"))||
          /insulin|metformin|glargin|nph|empagli|dapagli|canagli|glp|semaglu|dulaglu|gliclazi|glibencl|sitaglip|linaglip/i.test(val("a_med_act"));
 }
-function tfgDiabetes(){
-  const t=num("at_tfg"); if(t!==null)return t;
-  const cr=num("l_cr"), edad=num("edad"), sexo=val("sexo"), pk=pesoKg();
-  if(cr===null||edad===null||pk===null)return null;
-  let cl=((140-edad)*pk)/(72*cr);
-  if(sexo==="Femenino")cl*=0.85;
-  return Math.round(cl);
+// TFG por CKD-EPI 2021 (sin factor de raza). Requiere creatinina, edad y sexo.
+function tfgCKDEPI(){
+  const cr=num("l_cr"), edad=num("edad"), sexo=val("sexo");
+  if(cr===null||edad===null||!sexo)return null;
+  const fem = sexo==="Femenino";
+  const k = fem?0.7:0.9;
+  const a = fem?-0.241:-0.302;
+  const minv = Math.min(cr/k,1), maxv=Math.max(cr/k,1);
+  let e = 142*Math.pow(minv,a)*Math.pow(maxv,-1.200)*Math.pow(0.9938,edad);
+  if(fem)e*=1.012;
+  return Math.round(e);
 }
-function esquemaInsulina(sensible){
+function tfgDiabetes(){
+  const ckd=tfgCKDEPI(); if(ckd!==null)return ckd;
+  const t=num("at_tfg"); if(t!==null)return t;
+  return null;
+}
+function esquemaInsulina(reducido){
   const filas=[
     ["< 150 mg/dl","0 U","0 U"],
     ["150-199","2 U","1 U"],
@@ -1182,15 +1215,19 @@ function esquemaInsulina(sensible){
     ["300-349","8 U","4 U"],
     ["≥ 350","10 U + avisar","5 U + avisar"],
   ];
-  return {filas, sensible};
+  return {filas, reducido};
 }
 function planDiabetes(){
   if(!tieneDiabetes())return null;
   const tfg=tfgDiabetes();
   const renalBaja = (tfg!==null && tfg<45);
   const edad=num("edad");
-  const sensible = renalBaja || (edad!==null&&edad>70);
-  const P={ayuno:[],farmacos:[],insulina:[],esquema:null,monitoreo:[],tfg,renalBaja,sensible};
+  const modo=val("dm_esquema")||"auto";
+  let reducido;
+  if(modo==="estandar")reducido=false;
+  else if(modo==="reducido")reducido=true;
+  else reducido = renalBaja || (edad!==null&&edad>70);
+  const P={ayuno:[],farmacos:[],insulina:[],esquema:null,monitoreo:[],tfg,renalBaja,reducido,modo};
 
   P.ayuno.push("Programar al paciente de primero en la lista quirúrgica para minimizar el tiempo de ayuno.");
   P.ayuno.push("Permitir líquidos claros hasta 2 h antes; en diabéticos con riesgo de hipoglucemia en ayuno, estimular su ingesta.");
@@ -1209,7 +1246,7 @@ function planDiabetes(){
   if(renalBaja)
     P.insulina.push(`⚠ TFG ${tfg} ml/min: el riñón depura 30-80% de la insulina y su efecto se prolonga. Reducir aún más la basal (considerar ~50%) y extremar la vigilancia de hipoglucemia.`);
 
-  P.esquema = esquemaInsulina(sensible);
+  P.esquema = esquemaInsulina(reducido);
 
   P.monitoreo.push("Glucometría capilar cada 2-4 h mientras el paciente esté en ayuno.");
   P.monitoreo.push("Meta perioperatoria: 140-180 mg/dl.");
@@ -1374,6 +1411,12 @@ function calc(){
       : "Sin terapia antitrombótica: no aplica plan de suspensión.";
   }
   if(presetMode!=="custom")applyPreset();
+  refreshSecToggles();
+  // opciones de diabetes: mostrar solo si hay diabetes y la sección está activa
+  const dmOpt=document.getElementById("dmOptions");
+  if(dmOpt)dmOpt.style.display=(tieneDiabetes()&&secOn("diabetes"))?"block":"none";
+  const dmt=document.getElementById("dm_tfg_disp");
+  if(dmt){const t=tfgCKDEPI();dmt.value=(t!==null)?t+" ml/min":"— (falta creatinina/edad/sexo)";}
   render();
 }
 
@@ -1427,6 +1470,49 @@ function suggestions(){
   const r=rt24();if(r!==null)out.push([`Terapia hídrica basal: ${Math.round(r)} ml/24h (Holliday-Segar). Ajustar a pérdidas quirúrgicas y estado clínico.`,"trans"]);
   return out;
 }
+
+/* ================= SECCIONES OPCIONALES DE LA NOTA ================= */
+// id, título, ¿aplica automáticamente? (si la función devuelve true, se auto-activa)
+const SECCIONES=[
+  {id:"algo",  label:"Algoritmo cardíaco perioperatorio", auto:()=>true},
+  {id:"ayuno", label:"Ayuno preoperatorio", auto:()=>true},
+  {id:"profx", label:"Profilaxis antibiótica", auto:()=>true},
+  {id:"tromboprofx", label:"Tromboprofilaxis farmacológica", auto:()=>scoreTotal("Caprini")>=3},
+  {id:"antitrombo", label:"Manejo antitrombótico (anticoag./antiagreg.)", auto:()=>planAntitrombotico().length>0},
+  {id:"diabetes", label:"Manejo perioperatorio de diabetes", auto:()=>tieneDiabetes()},
+  {id:"hidrico", label:"Plan hídrico", auto:()=>true},
+];
+let SEC_STATE={};        // id -> bool (estado actual)
+let SEC_USERSET={};      // id -> bool (el usuario lo tocó manualmente)
+
+function buildSecToggles(){
+  const box=document.getElementById("secToggles");
+  if(!box)return;
+  box.innerHTML=SECCIONES.map(s=>
+    `<label class="rec-item" style="justify-content:space-between">
+       <span style="display:flex;align-items:center;gap:8px">
+         <input type="checkbox" id="sec_${s.id}" onchange="onSecToggle('${s.id}',this.checked)">
+         ${s.label}</span>
+       <span class="rec-auto" id="secauto_${s.id}" style="display:none">sugerida</span>
+     </label>`).join("");
+  // inicializar estados según auto
+  SECCIONES.forEach(s=>{ SEC_STATE[s.id] = !!s.auto(); });
+  refreshSecToggles();
+}
+function onSecToggle(id,on){
+  SEC_STATE[id]=on; SEC_USERSET[id]=true; render();
+}
+function refreshSecToggles(){
+  // recalcular auto para las que el usuario no ha tocado
+  SECCIONES.forEach(s=>{
+    if(!SEC_USERSET[s.id]) SEC_STATE[s.id]=!!s.auto();
+    const cb=document.getElementById("sec_"+s.id);
+    if(cb)cb.checked=SEC_STATE[s.id];
+    const badge=document.getElementById("secauto_"+s.id);
+    if(badge)badge.style.display = (s.auto()&&!SEC_USERSET[s.id])?"inline-block":"none";
+  });
+}
+function secOn(id){ return SEC_STATE[id]!==false; }
 
 function render(){
   const cl=clinicaActual();
@@ -1556,36 +1642,36 @@ function render(){
   <table class="risk-tbl"><tr><th>Escala</th><th style="text-align:center">Resultado</th><th style="text-align:center">Nivel</th><th>Interpretación y conducta sugerida</th></tr>
   ${riskRows}</table>
 
-  <h2>Algoritmo cardíaco perioperatorio</h2>
+  ${secOn("algo")?`<h2>Algoritmo cardíaco perioperatorio</h2>
   <div class="muted" style="margin-bottom:5px">Enfoque escalonado AHA/ACC 2024: riesgo calculado → capacidad funcional (DASI) → biomarcadores → imagen selectiva</div>
-  <div class="algo ${algoClass}">${esc(algo)}</div>
+  <div class="algo ${algoClass}">${esc(algo)}</div>`:""}
 
-  <h2>Ayuno preoperatorio</h2>
-  <div class="recs">${planAyuno().map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>
+  ${secOn("ayuno")?`<h2>Ayuno preoperatorio</h2>
+  <div class="recs">${planAyuno().map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:""}
 
-  <h2>Profilaxis antibiótica sugerida</h2>
+  ${secOn("profx")?`<h2>Profilaxis antibiótica sugerida</h2>
   <table><tr><td class="lab">Elección</td><td>${esc(prof[0])}</td></tr>
   <tr><td class="lab">Alternativa / notas</td><td style="color:#5b6b7a">${esc(prof[1])}</td></tr></table>
-  <div class="muted" style="margin-top:4px">Administrar 30-60 min antes de la incisión. Redosificar si la cirugía se prolonga (&gt;3-4 h) o hay pérdida hemática significativa.</div>
+  <div class="muted" style="margin-top:4px">Administrar 30-60 min antes de la incisión. Redosificar si la cirugía se prolonga (&gt;3-4 h) o hay pérdida hemática significativa.</div>`:""}
 
-  ${(function(){const tp=planTromboprofilaxis();if(!tp.length)return "";
+  ${(function(){if(!secOn("tromboprofx"))return "";const tp=planTromboprofilaxis();if(!tp.length)return "";
     return `<h2>Tromboprofilaxis farmacológica</h2>
     <div class="muted" style="margin-bottom:5px">Indicada por riesgo de tromboembolismo venoso (Caprini ${scoreTotal("Caprini")})</div>
     <div class="recs">${tp.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
-  ${(function(){const pa=planAntitrombotico();if(!pa.length)return "";
+  ${(function(){if(!secOn("antitrombo"))return "";const pa=planAntitrombotico();if(!pa.length)return "";
     return `<h2>Manejo antitrombótico perioperatorio</h2>
     <div class="muted" style="margin-bottom:5px">Suspensión y reinicio de anticoagulantes y antiagregantes (CHEST 2022)</div>
     <div class="recs">${pa.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
-  ${(function(){const d=planDiabetes();if(!d)return "";
+  ${(function(){if(!secOn("diabetes"))return "";const d=planDiabetes();if(!d)return "";
     const li=arr=>arr.map(x=>`<div class="ri">${esc(x)}</div>`).join("");
     const esq=d.esquema;
-    const tabla=`<table class="dm-tbl"><tr><th>Glucemia capilar</th><th>Insulina rápida SC${esq.sensible?" (dosis reducida*)":""}</th></tr>
-      ${esq.filas.map(f=>`<tr><td>${f[0]}</td><td><b>${esq.sensible?f[2]:f[1]}</b></td></tr>`).join("")}</table>
-      <div class="muted" style="margin-top:3px">${esq.sensible
-        ?"*Esquema de dosis reducida por función renal disminuida y/o edad &gt;70 años (mayor riesgo de hipoglucemia). Administrar cada 4-6 h según glucometría; no acumular dosis."
-        :"Esquema estándar de corrección. Administrar cada 4-6 h según glucometría. En función renal disminuida (TFG &lt;45) usar dosis reducidas."}</div>`;
+    const tabla=`<table class="dm-tbl"><tr><th>Glucemia capilar</th><th>Insulina rápida SC${esq.reducido?" (dosis reducida*)":""}</th></tr>
+      ${esq.filas.map(f=>`<tr><td>${f[0]}</td><td><b>${esq.reducido?f[2]:f[1]}</b></td></tr>`).join("")}</table>
+      <div class="muted" style="margin-top:3px">${esq.reducido
+        ?"*Esquema de dosis reducida (función renal disminuida y/o edad &gt;70 años, mayor riesgo de hipoglucemia). Administrar cada 4-6 h según glucometría; no acumular dosis."
+        :"Esquema estándar de corrección. Administrar cada 4-6 h según glucometría. En función renal disminuida (TFG &lt;45) considerar dosis reducidas."}</div>`;
     return `<h2>Manejo perioperatorio de la diabetes</h2>
     <div class="muted" style="margin-bottom:6px">${d.tfg!==null?`TFG estimada: ${d.tfg} ml/min${d.renalBaja?" · función renal disminuida":" · función renal conservada"}. `:""}Meta glucémica 140-180 mg/dl (ADA 2024/2025)</div>
     <div class="dm-grid">
@@ -1597,9 +1683,9 @@ function render(){
     ${tabla}
     <div class="dm-sub">Monitoreo y metas</div><div class="recs">${li(d.monitoreo)}</div>`;})()}
 
-  <h2>Plan hídrico</h2>
+  ${secOn("hidrico")?`<h2>Plan hídrico</h2>
   <table><tr><td class="lab">Superficie corporal</td><td>${s!==null?s.toFixed(2)+" m²":"—"}</td>
-  <td class="lab">Requerimiento 24 h</td><td>${rt24()!==null?Math.round(rt24())+" ml":"—"}</td></tr></table>
+  <td class="lab">Requerimiento 24 h</td><td>${rt24()!==null?Math.round(rt24())+" ml":"—"}</td></tr></table>`:""}
 
   <h2>Recomendaciones</h2>
   ${(function(){
@@ -1785,11 +1871,12 @@ function saveToLibrary(){
     lib[idx]=rec;
   } else lib.push(rec);
   setLibrary(lib);
+  updateBackupInfo();
   setStatus("Paciente guardado ✓");
 }
 function fmtDate(iso){try{return new Date(iso).toLocaleString("es-GT",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return iso;}}
 
-function openLibraryModal(){document.getElementById("libModal").classList.add("open");document.getElementById("libSearch").value="";renderLibrary();}
+function openLibraryModal(){document.getElementById("libModal").classList.add("open");document.getElementById("libSearch").value="";renderLibrary();updateBackupInfo();}
 function closeLibrary(){document.getElementById("libModal").classList.remove("open");}
 function renderLibrary(){
   const q=slug(document.getElementById("libSearch").value);
@@ -1816,11 +1903,14 @@ function deleteRecord(id){
 function exportLibrary(){
   const lib=getLibrary();
   if(!lib.length){alert("No hay pacientes para respaldar.");return;}
-  const blob=new Blob([JSON.stringify({library:lib,exported:new Date().toISOString()},null,2)],{type:"application/json"});
+  const blob=new Blob([JSON.stringify({library:lib,exported:new Date().toISOString(),app:"preop",version:2},null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);const a=document.createElement("a");
   a.href=url;a.download="Biblioteca_preop_"+new Date().toISOString().slice(0,10)+".json";
   document.body.appendChild(a);a.click();document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus("Biblioteca respaldada");
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  try{localStorage.setItem("preop_lastbackup",new Date().toISOString());}catch(e){}
+  updateBackupInfo();
+  setStatus("Biblioteca respaldada ("+lib.length+" pacientes)");
 }
 function importFileToLibrary(ev){
   const f=ev.target.files[0];if(!f)return;
@@ -1830,16 +1920,40 @@ function importFileToLibrary(ev){
       const obj=JSON.parse(r.result);
       const lib=getLibrary();
       if(obj.library && Array.isArray(obj.library)){
-        // respaldo de biblioteca completa: fusionar
-        obj.library.forEach(rec=>{const i=lib.findIndex(x=>x.id===rec.id);if(i>=0)lib[i]=rec;else lib.push(rec);});
-        setLibrary(lib);renderLibrary();setStatus("Biblioteca importada ("+obj.library.length+")");
+        // fusión inteligente: por id, conservar el registro guardado más recientemente
+        let nuevos=0, actualizados=0;
+        obj.library.forEach(rec=>{
+          const i=lib.findIndex(x=>x.id===rec.id);
+          if(i>=0){
+            const local=lib[i].savedAt||"", entra=rec.savedAt||"";
+            if(entra>=local){lib[i]=rec;actualizados++;}
+          } else {lib.push(rec);nuevos++;}
+        });
+        setLibrary(lib);renderLibrary();
+        setStatus(`Importados: ${nuevos} nuevos, ${actualizados} actualizados`);
       } else if(obj.fields){
-        // borrador individual (p. ej. del Google Form): cargar como paciente actual
         applyData(obj);closeLibrary();setStatus("Datos importados");
       } else {alert("El archivo no tiene un formato reconocido.");}
     }catch(e){alert("El archivo no es válido.");}
   };
   r.readAsText(f);ev.target.value="";
+}
+function updateBackupInfo(){
+  const el=document.getElementById("backupInfo");
+  if(!el)return;
+  const lib=getLibrary();
+  let last="";
+  try{last=localStorage.getItem("preop_lastbackup")||"";}catch(e){}
+  if(!lib.length){el.innerHTML="";return;}
+  if(!last){
+    el.innerHTML=`<span style="color:#b23b3b">⚠ ${lib.length} paciente(s) sin respaldar nunca.</span>`;return;
+  }
+  // ¿hay pacientes guardados después del último respaldo?
+  const pend=lib.filter(r=>(r.savedAt||"")>last).length;
+  const fecha=fmtDate(last);
+  el.innerHTML = pend>0
+    ? `<span style="color:#b07d16">● Último respaldo: ${fecha}. <b>${pend} cambio(s) sin respaldar.</b></span>`
+    : `<span style="color:#2e7d5b">✓ Respaldo al día (${fecha}).</span>`;
 }
 
 /* ================= DICTADO POR VOZ (Web Speech API) ================= */
@@ -1934,7 +2048,7 @@ function showDictTip(on){
 }
 
 /* ================= INIT ================= */
-buildTipos();buildScores();buildRecBank();
+buildTipos();buildScores();buildRecBank();buildSecToggles();
 (function(){
   let restored=false;
   try{const saved=localStorage.getItem("preop_current");
