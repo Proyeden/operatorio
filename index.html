@@ -287,14 +287,29 @@
        text-transform:uppercase;letter-spacing:.05em;font-weight:700}
   /* ---- Print ---- */
   @media print{
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
     header.topbar,.form-pane,.preview-label{display:none!important}
     .wrap{display:block}
     .preview-pane{position:static;height:auto;overflow:visible;background:#fff;
          padding:0;border:none}
     .note{box-shadow:none;max-width:none;margin:0;padding:0 0 12px;border-radius:0}
-    .note-hd{padding:16px 22px 14px}
+    .note-hd{padding:16px 22px 14px;border-bottom:4px solid #e8873c!important;
+         background:#0e6b73!important;color:#fff!important}
+    .note-hd .kicker,.note-hd h1,.note-hd .sub{color:#fff!important}
     .note-body{padding:0 22px}
-    .note h2{margin:16px 0 7px}
+    .note h2{margin:16px 0 7px;background:#e6f3f3!important;border-left:4px solid #0e7c85!important;
+         color:#0a5157!important}
+    .note .risk-tbl th{background:#12324a!important;color:#fff!important}
+    .note .frame{background:#fdf6e6!important}
+    .note .algo.low{background:#eef7f1!important}
+    .note .algo.mid{background:#fdf6e9!important}
+    .note .algo.high{background:#fdeeea!important}
+    .note .dm-tbl th{background:#0e7c85!important;color:#fff!important}
+    .chip{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    .r-bajo{background:#e3f2e8!important}.r-medio{background:#fdf1dc!important}
+    .r-alto{background:#fbe4e0!important}.r-na{background:#eef1f4!important}
+    .note .rec-block-hd{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    @page{margin:12mm}
   }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -2261,16 +2276,34 @@ function getFirmaAssets(){
   try{return JSON.parse(localStorage.getItem("preop_firma_assets")||"{}");}catch(e){return {};}
 }
 function setFirmaAssets(o){
-  try{localStorage.setItem("preop_firma_assets",JSON.stringify(o));}catch(e){alert("No se pudo guardar (almacenamiento lleno).");}
-  pushFirmaAssets(o);
+  let localOk=true;
+  try{localStorage.setItem("preop_firma_assets",JSON.stringify(o));}
+  catch(e){
+    localOk=false;
+    // localStorage lleno: no bloquear; la nube es la fuente principal si hay sesión
+    if(!(FB&&FB.user))
+      alert("El almacenamiento local está lleno. Inicie sesión para guardar la firma en la nube, o use una imagen más pequeña.");
+  }
+  pushFirmaAssets(o).then(ok=>{
+    if(ok)setStatus("Firma sincronizada ☁");
+    else if(!localOk)setStatus("Guardado local lleno; sin sesión en la nube");
+  });
 }
 // Subir firma/sello a Firestore (documento de configuración del usuario)
 async function pushFirmaAssets(o){
-  if(!FB || !FB.user)return;
+  if(!FB || !FB.user)return false;
   let pwd="";try{pwd=localStorage.getItem("preop_firma_pwd")||"";}catch(e){}
-  try{ await FB.db.collection("usuarios").doc(FB.user.uid).collection("config").doc("firma")
-        .set({...o, pwdHash:pwd}); }
-  catch(e){ console.log("push firma falló:",e); }
+  try{
+    await FB.db.collection("usuarios").doc(FB.user.uid).collection("config").doc("firma")
+      .set({...o, pwdHash:pwd});
+    return true;
+  }
+  catch(e){
+    console.log("push firma falló:",e);
+    if((""+e).includes("longer than")||(""+e).includes("1048487")||(""+e).toLowerCase().includes("size"))
+      alert("La imagen es demasiado grande para la nube (límite 1 MB por documento). Use una firma más pequeña.");
+    return false;
+  }
 }
 // Descargar firma/sello de Firestore al iniciar sesión
 async function pullFirmaAssets(){
@@ -2314,7 +2347,32 @@ function refreshFirmaModal(){
 function loadFirmaImg(ev,which){
   const f=ev.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=()=>{const a=getFirmaAssets();a[which]=r.result;setFirmaAssets(a);refreshFirmaModal();};
+  r.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      // redimensionar a un ancho máximo (la firma no necesita más) y comprimir
+      const MAXW=600;
+      let w=img.width, h=img.height;
+      if(w>MAXW){ h=Math.round(h*MAXW/w); w=MAXW; }
+      const canvas=document.createElement("canvas");
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext("2d");
+      // fondo blanco (firma/sello suelen ser sobre papel); evita transparencia pesada
+      ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      // exportar como JPEG comprimido (mucho más ligero que PNG para esto)
+      let dataUrl=canvas.toDataURL("image/jpeg",0.85);
+      // si aún fuera grande, bajar calidad progresivamente
+      let q=0.85;
+      while(dataUrl.length>350000 && q>0.4){ q-=0.15; dataUrl=canvas.toDataURL("image/jpeg",q); }
+      const kb=Math.round(dataUrl.length/1024);
+      const a=getFirmaAssets(); a[which]=dataUrl; setFirmaAssets(a); refreshFirmaModal();
+      setStatus((which==="firma"?"Firma":"Sello")+" guardado ("+kb+" KB)");
+    };
+    img.onerror=()=>alert("No se pudo leer la imagen. Use PNG o JPG.");
+    img.src=r.result;
+  };
+  r.onerror=()=>alert("No se pudo leer el archivo.");
   r.readAsDataURL(f);ev.target.value="";
 }
 function delFirmaImg(which){const a=getFirmaAssets();delete a[which];setFirmaAssets(a);refreshFirmaModal();}
