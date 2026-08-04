@@ -271,6 +271,12 @@
   .note .callout{background:#f5f9fa;border-left:3px solid #0e6b73;padding:10px 13px;
        border-radius:0 6px 6px 0;font-size:11px;line-height:1.55;color:#40525f;margin:6px 0}
   .note .sign{margin-top:42px;text-align:center}
+  .note .sign-imgs{position:relative;height:80px;display:flex;align-items:flex-end;justify-content:center;gap:20px;margin-bottom:2px}
+  .note .sign-firma{max-height:78px;max-width:230px;object-fit:contain}
+  .note .sign-sello{max-height:74px;max-width:220px;object-fit:contain;opacity:.92}
+  .fm-prev{border:1px dashed var(--line);border-radius:8px;min-height:78px;display:flex;
+       align-items:center;justify-content:center;background:#fafcfc;padding:6px}
+  .fm-empty{font-size:11px;color:var(--muted);font-style:italic}
   .note .sign .line{border-top:1px solid #34434f;width:230px;margin:0 auto 5px}
   .note .sign .nm{font-weight:700;font-size:12.5px;color:#17324d}
   .note .sign .sm{font-size:10.5px;color:#5b6b7a}
@@ -300,6 +306,7 @@
     <button class="btn btn-ghost" onclick="newPatient()">Nuevo</button>
     <button class="btn btn-ghost" onclick="saveToLibrary()">Guardar paciente</button>
     <button class="btn btn-ghost" onclick="openLibraryModal()">Abrir paciente</button>
+    <button class="btn btn-ghost" onclick="openFirmaModal()">Firmar y sellar</button>
     <button class="btn btn-pdf" onclick="window.print()">Imprimir / PDF</button>
     <button class="btn btn-word" onclick="downloadWord()">Descargar Word</button>
   </div>
@@ -568,6 +575,53 @@
   </div>
 </div>
 
+<!-- ================= MODAL FIRMA ================= -->
+<div class="modal-bg" id="firmaModal" onclick="if(event.target===this)closeFirmaModal()">
+  <div class="modal">
+    <div class="modal-head"><span>Firma y sello</span><button onclick="closeFirmaModal()" title="Cerrar">✕</button></div>
+    <div style="padding:16px;overflow-y:auto">
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">Firma</div>
+          <div class="fm-prev" id="prevFirma"></div>
+          <input type="file" id="fileFirma" accept="image/*" style="display:none" onchange="loadFirmaImg(event,'firma')">
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn btn-ghost dark" onclick="document.getElementById('fileFirma').click()">Cargar</button>
+            <button class="btn btn-ghost dark" onclick="delFirmaImg('firma')">Quitar</button>
+          </div>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">Sello</div>
+          <div class="fm-prev" id="prevSello"></div>
+          <input type="file" id="fileSello" accept="image/*" style="display:none" onchange="loadFirmaImg(event,'sello')">
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn btn-ghost dark" onclick="document.getElementById('fileSello').click()">Cargar</button>
+            <button class="btn btn-ghost dark" onclick="delFirmaImg('sello')">Quitar</button>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--line);padding-top:12px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px">Firmar el documento actual</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="password" id="firmaPwd" placeholder="Contraseña" style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px">
+          <button class="btn btn-pdf" onclick="aplicarFirma()">Firmar</button>
+          <button class="btn btn-ghost dark" onclick="firmarConHuella()">🔒 Huella</button>
+        </div>
+        <div id="firmaMsg" style="color:#b23b3b;font-size:12px;margin-top:6px;min-height:16px"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="bioStatus"></div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11.5px">
+          <a onclick="registrarHuella()" style="color:var(--primary);cursor:pointer;text-decoration:underline">Registrar huella en este dispositivo</a>
+          <a onclick="resetPwd()" style="color:var(--primary);cursor:pointer;text-decoration:underline">Cambiar/resetear contraseña</a>
+          <a onclick="quitarFirma()" style="color:#b23b3b;cursor:pointer;text-decoration:underline">Retirar firma del documento</a>
+        </div>
+      </div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.5;background:#f5f9fa;border-radius:6px;padding:8px 10px;margin-top:12px">
+        La firma y el sello se guardan solo en este dispositivo. La contraseña se almacena cifrada (hash), nunca en texto. Registrar la huella permite firmar sin escribir la contraseña en dispositivos de confianza.
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= MODAL BIBLIOTECA ================= -->
 <div class="modal-bg" id="libModal" onclick="if(event.target===this)closeLibrary()">
   <div class="modal">
@@ -800,13 +854,13 @@ const REC_BANK=[
 ["Profilaxis de náusea y vómito postoperatorio (NVPO).","trans"],
 ["Profilaxis mecánica de TVP con compresión neumática intermitente o medias de compresión graduada.","trans"],
 ["Tiempo quirúrgico corto.","trans"],
-["Control glucémico intraoperatorio (meta 140-180 mg/dl).","trans"],
+["Control glucémico intraoperatorio (meta 100-180 mg/dl, ADA 2026).","trans"],
 
 ["Monitoreo de signos vitales en la primera hora postoperatoria.","post"],
 ["Movilización temprana postoperatoria.","post"],
 ["Vigilancia de troponina postoperatoria (24-48 h) por riesgo de lesión miocárdica tras cirugía no cardíaca (MINS) en pacientes de riesgo elevado.","post"],
 ["Vigilar aparición de fibrilación auricular perioperatoria; si se presenta, seguimiento estrecho por riesgo aumentado de ACV.","post"],
-["Control glucémico postoperatorio (meta 140-180 mg/dl).","post"],
+["Control glucémico postoperatorio (meta 100-180 mg/dl, ADA 2026).","post"],
 ["Tromboprofilaxis farmacológica con HBPM (preferida sobre heparina no fraccionada por menor número de inyecciones y menor riesgo de trombocitopenia inducida por heparina).","post"],
 ["Iniciar tromboprofilaxis farmacológica (12-24 h) una vez asegurada la hemostasia.","post"],
 ["Continuar tromboprofilaxis hasta la deambulación plena; considerar profilaxis extendida al alta en cirugía oncológica abdominopélvica o artroplastia mayor.","post"],
@@ -1222,10 +1276,10 @@ function tfgDiabetes(){
 }
 function esquemaInsulina(reducido){
   const filas=[
-    ["< 150 mg/dl","0 U","0 U"],
-    ["150-199","2 U","1 U"],
-    ["200-249","4 U","2 U"],
-    ["250-299","6 U","3 U"],
+    ["< 180 mg/dl","0 U","0 U"],
+    ["180-219","2 U","1 U"],
+    ["220-259","4 U","2 U"],
+    ["260-299","6 U","3 U"],
     ["300-349","8 U","4 U"],
     ["≥ 350","10 U + avisar","5 U + avisar"],
   ];
@@ -1244,6 +1298,7 @@ function planDiabetes(){
   const P={ayuno:[],farmacos:[],insulina:[],esquema:null,monitoreo:[],tfg,renalBaja,reducido,modo};
 
   P.ayuno.push("Programar al paciente de primero en la lista quirúrgica para minimizar el tiempo de ayuno.");
+  P.ayuno.push("Meta de control previo a cirugía electiva: A1c < 8% en los 3 meses previos (o GMI < 8% / tiempo en rango > 50% en 14 días) — ADA 2026, Rec. 16.14.");
   P.ayuno.push("Permitir líquidos claros hasta 2 h antes; en diabéticos con riesgo de hipoglucemia en ayuno, estimular su ingesta.");
   P.ayuno.push("Vigilar gastroparesia diabética: puede retrasar el vaciamiento gástrico; individualizar y considerar ecografía gástrica si hay duda.");
 
@@ -1263,7 +1318,7 @@ function planDiabetes(){
   P.esquema = esquemaInsulina(reducido);
 
   P.monitoreo.push("Glucometría capilar cada 2-4 h mientras el paciente esté en ayuno.");
-  P.monitoreo.push("Meta perioperatoria: 140-180 mg/dl.");
+  P.monitoreo.push("Meta glucémica perioperatoria: 100-180 mg/dl (ADA 2026).");
   P.monitoreo.push("Hipoglucemia (<70 mg/dl o síntomas): en ayuno, 10-20 g de dextrosa IV (20-40 ml de dextrosa al 50%); si tolera vía oral, 15 g de carbohidrato. Recontrolar en 15 min.");
   P.monitoreo.push("Postoperatorio: preferir esquema basal-bolo sobre la escala móvil aislada; reiniciar el tratamiento habitual al recuperar la ingesta.");
   if(renalBaja)
@@ -1302,8 +1357,17 @@ function planAntitrombotico(){
   if(!ac && !ap)return [];
   const sang=sangradoRiesgo(), altoTrombo=trombosisAlta();
   const tfg=num("at_tfg"), esp=val("at_esp"), stent=val("at_stent");
+  const tipo=val("tipo");
   const P=[];
   P.push(`Riesgo hemorrágico del procedimiento: ${sang}. Riesgo trombótico: ${altoTrombo?"ALTO":"bajo-moderado"}.`);
+
+  // --- Cirugía oftalmológica: manejo particular ---
+  if(tipo==="Oftalmológica"){
+    P.push("Cirugía de catarata con facoemulsificación y anestesia tópica/subtenoniana: se recomienda CONTINUAR todos los antitrombóticos (antiagregantes y anticoagulantes); es la única recomendación firme en oftalmología (riesgo hemorrágico mínimo).");
+    P.push("Con warfarina: verificar INR en rango terapéutico el día de la cirugía y continuarla.");
+    P.push("Procedimientos oftalmológicos de mayor riesgo hemorrágico (vitreorretiniana, glaucoma filtrante, oculoplástica, o anestesia con aguja peri/retrobulbar): individualizar; puede requerirse suspender anticoagulantes/P2Y12, ya que el sangrado sostenido puede causar pérdida visual. Manejo conjunto con oftalmología.");
+    return P;
+  }
 
   // --- Procedimientos especiales ---
   if(esp==="Implante de marcapasos/DAI" && ac==="Warfarina (AVK)"){
@@ -1370,6 +1434,7 @@ function planAntitrombotico(){
     P.push("⚠ Stent coronario reciente (< 3 meses): riesgo elevado de trombosis del stent. Diferir la cirugía electiva o, si es impostergable, continuar la doble antiagregación. Decisión conjunta con cardiología.");
   } else if(stent==="Colocado hace > 3 meses"){
     P.push("Stent coronario > 3 meses: suspender el inhibidor P2Y12 y CONTINUAR la aspirina durante el perioperatorio.");
+    P.push("En stent > 1 año y cirugía de riesgo bajo-intermedio, la evidencia reciente (ASSURE-DES, JACC 2024) no mostró diferencia entre mantener aspirina o suspender toda antiagregación a 30 días; es razonable individualizar según riesgo hemorrágico y trombótico, sin obligar a continuar aspirina si el sangrado es preocupante.");
   }
   if(ap && stent) P.push("El puenteo de la antiagregación con otros antiagregantes o anticoagulantes no ha demostrado mejorar los desenlaces.");
   return P;
@@ -1732,7 +1797,7 @@ function render(){
         ?"*Esquema de dosis reducida (función renal disminuida y/o edad &gt;70 años, mayor riesgo de hipoglucemia). Administrar cada 4-6 h según glucometría; no acumular dosis."
         :"Esquema estándar de corrección. Administrar cada 4-6 h según glucometría. En función renal disminuida (TFG &lt;45) considerar dosis reducidas."}</div>`;
     return `<h2>Manejo perioperatorio de la diabetes</h2>
-    <div class="muted" style="margin-bottom:6px">${d.tfg!==null?`TFG estimada: ${d.tfg} ml/min${d.renalBaja?" · función renal disminuida":" · función renal conservada"}. `:""}Meta glucémica 140-180 mg/dl (ADA 2024/2025)</div>
+    <div class="muted" style="margin-bottom:6px">${d.tfg!==null?`TFG estimada: ${d.tfg} ml/min${d.renalBaja?" · función renal disminuida":" · función renal conservada"}. `:""}Meta glucémica perioperatoria 100-180 mg/dl (ADA 2026)</div>
     <div class="dm-grid">
       <div class="dm-col"><div class="dm-sub">Ayuno</div><div class="recs">${li(d.ayuno)}</div>
         <div class="dm-sub">Fármacos no insulínicos</div><div class="recs">${li(d.farmacos)}</div></div>
@@ -1753,13 +1818,19 @@ function render(){
     return `<ol class="recs-ol">${todas.map(r=>`<li>${esc(r)}</li>`).join("")}</ol>`;
   })()}
 
-  <div class="sign"><div class="line"></div>
+  <div class="sign">
+    ${FIRMA_STATE.firmado?(function(){const a=getFirmaAssets();
+      return `<div class="sign-imgs">
+        ${a.sello?`<img class="sign-sello" src="${a.sello}">`:""}
+        ${a.firma?`<img class="sign-firma" src="${a.firma}">`:""}
+      </div>`;})():""}
+    <div class="line"></div>
     <div class="nm">${esc(cl.medico)}</div>
     <div class="sm">${esc(cl.credencial)}</div>
     <div class="sm">${esc(cl.nombre)}</div>
     <div class="sm" style="font-size:9.5px">${esc([cl.direccion,cl.telefono].filter(Boolean).join(" · "))}</div>
   </div>
-  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2024/2025» (Diabetes Care. 2024;47(Suppl.1):S295 y 2025;48(Suppl.1):S321); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022). Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
+  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2026» (Diabetes Care. 2026;49(Suppl.1):S339–S355); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022); Kang DY et al., ensayo ASSURE-DES sobre aspirina en portadores de stent (J Am Coll Cardiol. 2024;84:2380–2389); y guías de manejo antitrombótico en cirugía oftalmológica (American Academy of Ophthalmology / CHEST 2022). Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
   </div>`;
 
   document.getElementById("note").innerHTML=note;
@@ -1845,6 +1916,9 @@ function downloadWord(){
     .dm-tbl td{padding:3pt 8pt;font-size:9pt;border-bottom:.5pt solid #e4ebee}
     .muted{color:#8794a0;font-style:italic;font-size:8.5pt}
     .sign{margin-top:26pt;text-align:center}
+    .sign-imgs{margin-bottom:2pt}
+    .sign-firma{max-height:60pt}
+    .sign-sello{max-height:56pt;margin-right:16pt}
     .sign .line{border-top:.75pt solid #34434f;width:200pt;margin:0 auto 3pt}
     .sign .nm{font-weight:bold;color:#12324a}
     .sign .sm{font-size:9pt;color:#5b6b7a}
@@ -2106,6 +2180,140 @@ function showDictTip(on){
   tip.classList.toggle("show",on);
 }
 
+/* ================= FIRMA Y SELLO ================= */
+// La firma/sello se guardan como imágenes (dataURL) en localStorage del dispositivo.
+// Activar el firmado requiere contraseña. Hash SHA-256 (no se guarda en texto plano).
+const FIRMA_DEFAULT_HASH_PENDING = "M@riaj0se"; // se convierte a hash en primer arranque
+let FIRMA_STATE={firmado:false};
+
+async function sha256(txt){
+  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(txt));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function ensurePwdHash(){
+  let h="";
+  try{h=localStorage.getItem("preop_firma_pwd")||"";}catch(e){}
+  if(!h){ // primer arranque: sembrar con la contraseña por defecto
+    h=await sha256(FIRMA_DEFAULT_HASH_PENDING);
+    try{localStorage.setItem("preop_firma_pwd",h);}catch(e){}
+  }
+  return h;
+}
+async function verifyPwd(input){
+  const stored=await ensurePwdHash();
+  const h=await sha256(input);
+  return h===stored;
+}
+function getFirmaAssets(){
+  try{return JSON.parse(localStorage.getItem("preop_firma_assets")||"{}");}catch(e){return {};}
+}
+function setFirmaAssets(o){try{localStorage.setItem("preop_firma_assets",JSON.stringify(o));}catch(e){alert("No se pudo guardar (almacenamiento lleno).");}}
+
+// ---- Modal de firma ----
+function openFirmaModal(){
+  const m=document.getElementById("firmaModal");
+  m.classList.add("open");
+  refreshFirmaModal();
+}
+function closeFirmaModal(){document.getElementById("firmaModal").classList.remove("open");}
+function refreshFirmaModal(){
+  const a=getFirmaAssets();
+  const pf=document.getElementById("prevFirma"), ps=document.getElementById("prevSello");
+  if(pf)pf.innerHTML=a.firma?`<img src="${a.firma}" style="max-height:70px">`:'<span class="fm-empty">Sin firma cargada</span>';
+  if(ps)ps.innerHTML=a.sello?`<img src="${a.sello}" style="max-height:70px">`:'<span class="fm-empty">Sin sello cargado</span>';
+  // ¿huella disponible/registrada?
+  const bio=document.getElementById("bioStatus");
+  if(bio){
+    let reg=false;try{reg=!!localStorage.getItem("preop_firma_cred");}catch(e){}
+    bio.textContent = reg?"✓ Huella registrada en este dispositivo":"Huella no registrada en este dispositivo";
+  }
+}
+function loadFirmaImg(ev,which){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{const a=getFirmaAssets();a[which]=r.result;setFirmaAssets(a);refreshFirmaModal();};
+  r.readAsDataURL(f);ev.target.value="";
+}
+function delFirmaImg(which){const a=getFirmaAssets();delete a[which];setFirmaAssets(a);refreshFirmaModal();}
+
+// ---- Aplicar firma (requiere contraseña) ----
+async function aplicarFirma(){
+  const a=getFirmaAssets();
+  if(!a.firma && !a.sello){alert("Primero cargue la firma y/o el sello (botón «Gestionar firma»).");return;}
+  const pwd=document.getElementById("firmaPwd").value;
+  if(!pwd){document.getElementById("firmaMsg").textContent="Ingrese la contraseña.";return;}
+  if(await verifyPwd(pwd)){
+    FIRMA_STATE.firmado=true;
+    document.getElementById("firmaPwd").value="";
+    document.getElementById("firmaMsg").textContent="";
+    closeFirmaModal(); render();
+    setStatus("Documento firmado ✓");
+  } else {
+    document.getElementById("firmaMsg").textContent="Contraseña incorrecta.";
+  }
+}
+function quitarFirma(){FIRMA_STATE.firmado=false;render();setStatus("Firma retirada");}
+
+// ---- Huella / WebAuthn ----
+async function registrarHuella(){
+  if(!window.PublicKeyCredential){alert("Este dispositivo o navegador no admite huella/biometría.");return;}
+  // Requiere contraseña para autorizar el registro de la huella
+  const pwd=prompt("Para registrar la huella en este dispositivo, ingrese la contraseña de firma:");
+  if(pwd===null)return;
+  if(!(await verifyPwd(pwd))){alert("Contraseña incorrecta. No se registró la huella.");return;}
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      rp:{name:"Valoración Preoperatoria"},
+      user:{id:crypto.getRandomValues(new Uint8Array(16)),name:"firma",displayName:"Firma médica"},
+      pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+      authenticatorSelection:{userVerification:"required",authenticatorAttachment:"platform"},
+      timeout:60000
+    }});
+    if(cred){
+      localStorage.setItem("preop_firma_cred", cred.id);
+      alert("Huella registrada. Ahora puede firmar con huella en este dispositivo.");
+      refreshFirmaModal();
+    }
+  }catch(e){alert("No se pudo registrar la huella: "+(e.message||e));}
+}
+async function firmarConHuella(){
+  let credId="";try{credId=localStorage.getItem("preop_firma_cred")||"";}catch(e){}
+  if(!credId){alert("No hay huella registrada en este dispositivo. Regístrela primero (requiere contraseña).");return;}
+  const a=getFirmaAssets();
+  if(!a.firma && !a.sello){alert("Primero cargue la firma y/o el sello.");return;}
+  try{
+    const assertion=await navigator.credentials.get({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{type:"public-key",id:Uint8Array.from(atob(credId.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0))}],
+      userVerification:"required",timeout:60000
+    }});
+    if(assertion){FIRMA_STATE.firmado=true;closeFirmaModal();render();setStatus("Documento firmado con huella ✓");}
+  }catch(e){
+    // fallback: algunos navegadores rechazan el id codificado; intentar sin allowCredentials
+    try{
+      const assertion=await navigator.credentials.get({publicKey:{
+        challenge:crypto.getRandomValues(new Uint8Array(32)),userVerification:"required",timeout:60000}});
+      if(assertion){FIRMA_STATE.firmado=true;closeFirmaModal();render();setStatus("Documento firmado con huella ✓");}
+    }catch(e2){alert("No se pudo verificar la huella: "+(e2.message||e2));}
+  }
+}
+
+// ---- Resetear contraseña ----
+async function resetPwd(){
+  const actual=prompt("Ingrese la contraseña ACTUAL para cambiarla:");
+  if(actual===null)return;
+  if(!(await verifyPwd(actual))){alert("Contraseña actual incorrecta.");return;}
+  const nueva=prompt("Nueva contraseña (mínimo 6 caracteres):");
+  if(nueva===null)return;
+  if(nueva.length<6){alert("La contraseña debe tener al menos 6 caracteres.");return;}
+  const conf=prompt("Confirme la nueva contraseña:");
+  if(conf!==nueva){alert("Las contraseñas no coinciden.");return;}
+  const h=await sha256(nueva);
+  try{localStorage.setItem("preop_firma_pwd",h);}catch(e){}
+  alert("Contraseña actualizada.");
+}
+
 /* ================= INIT ================= */
 buildTipos();buildScores();buildRecBank();buildSecToggles();
 (function(){
@@ -2119,6 +2327,7 @@ buildTipos();buildScores();buildRecBank();buildSecToggles();
     calc();
   }
   injectMics();
+  ensurePwdHash();
   if(!dictSupported()){
     // ocultar cualquier rastro; no romper nada
     console.log("Dictado por voz no disponible en este navegador.");
