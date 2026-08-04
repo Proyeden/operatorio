@@ -288,11 +288,12 @@
   /* ---- Print ---- */
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+    html,body{background:#fff!important}
     header.topbar,.form-pane,.preview-label{display:none!important}
-    .wrap{display:block}
-    .preview-pane{position:static;height:auto;overflow:visible;background:#fff;
-         padding:0;border:none}
-    .note{box-shadow:none;max-width:none;margin:0;padding:0 0 12px;border-radius:0}
+    .wrap{display:block;background:#fff!important}
+    .preview-pane{position:static!important;height:auto!important;overflow:visible!important;
+         background:#fff!important;background-image:none!important;padding:0!important;border:none!important}
+    .note{box-shadow:none!important;max-width:none;margin:0;padding:0 0 12px;border-radius:0;background:#fff!important}
     .note-hd{padding:16px 22px 14px;border-bottom:4px solid #e8873c!important;
          background:#0e6b73!important;color:#fff!important}
     .note-hd .kicker,.note-hd h1,.note-hd .sub{color:#fff!important}
