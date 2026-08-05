@@ -36,6 +36,18 @@
        padding:2px 8px;border-radius:10px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
   .status{font-size:11px;color:rgba(255,255,255,.85);font-style:italic;min-width:70px;text-align:right}
+  .save-state{font-size:11px;font-weight:700;padding:4px 11px;border-radius:12px;cursor:pointer;
+       display:inline-flex;align-items:center;gap:5px;white-space:nowrap;transition:.15s;user-select:none}
+  .save-state::before{content:"";width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .save-state.dirty{background:#fbe9d2;color:#8a4b13}
+  .save-state.dirty::before{background:#e8873c}
+  .save-state.saved{background:#dff0e4;color:#1e6b3c}
+  .save-state.saved::before{background:#2e9e5b}
+  .save-state.cloud{background:#d9eef0;color:#0a5157}
+  .save-state.cloud::before{background:#0e7c85}
+  .save-state.none{background:rgba(255,255,255,.15);color:#fff}
+  .save-state.none::before{background:rgba(255,255,255,.6)}
+  .save-state:hover{filter:brightness(.96)}
   .btn{border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;
        cursor:pointer;font-family:inherit;transition:.15s}
   .btn{box-shadow:0 1px 2px rgba(0,0,0,.08)}
@@ -342,6 +354,7 @@
   <h1>Valoración Preoperatoria <span class="tag">Cirugía no cardíaca</span></h1>
   <div class="actions">
     <span id="status" class="status"></span>
+    <span id="saveState" class="save-state" onclick="saveToLibrary()" title="Clic para guardar en la biblioteca"></span>
     <button class="btn btn-ghost" id="accountBtn" onclick="openAuthModal()">Cuenta</button>
     <button class="btn btn-ghost" onclick="newPatient()">Nuevo</button>
     <button class="btn btn-ghost" onclick="saveToLibrary()">Guardar paciente</button>    <button class="btn btn-ghost" onclick="openLibraryModal()">Abrir paciente</button>
@@ -2062,7 +2075,40 @@ function applyData(data){
   if(data.preset){presetMode=data.preset;const p=document.getElementById("notePreset");if(p)p.value=data.preset;}
   calc();
 }
-function autosave(){try{localStorage.setItem("preop_current",JSON.stringify(collectData()));}catch(e){}}
+function autosave(){try{localStorage.setItem("preop_current",JSON.stringify(collectData()));}catch(e){}updateSaveState();}
+
+// ---- Indicador de estado de guardado ----
+let LAST_SAVED_SNAPSHOT="";   // firma de los datos tal como se guardaron por última vez
+function dataSignature(){
+  try{return JSON.stringify(collectData());}catch(e){return "";}
+}
+function markSaved(){ LAST_SAVED_SNAPSHOT=dataSignature(); updateSaveState(); }
+function updateSaveState(){
+  const el=document.getElementById("saveState");
+  if(!el)return;
+  const nombre=val("nombre").trim();
+  el.classList.remove("dirty","saved","cloud","none");
+  if(!nombre){
+    el.classList.add("none");
+    el.textContent="Sin paciente";
+    el.title="Escriba el nombre del paciente para poder guardar";
+    return;
+  }
+  const now=dataSignature();
+  if(!LAST_SAVED_SNAPSHOT){
+    el.classList.add("dirty"); el.textContent="Sin guardar";
+    el.title="Este paciente aún no se ha guardado. Clic para guardar.";
+  } else if(now!==LAST_SAVED_SNAPSHOT){
+    el.classList.add("dirty"); el.textContent="Cambios sin guardar";
+    el.title="Hay cambios desde el último guardado. Clic para guardar.";
+  } else if(FB && FB.user){
+    el.classList.add("cloud"); el.textContent="Guardado en la nube";
+    el.title="Guardado y sincronizado en tu cuenta.";
+  } else {
+    el.classList.add("saved"); el.textContent="Guardado";
+    el.title="Guardado en este dispositivo.";
+  }
+}
 let statusTimer=null;
 function setStatus(msg){const s=document.getElementById("status");if(!s)return;s.textContent=msg;
   clearTimeout(statusTimer);statusTimer=setTimeout(()=>{s.textContent="";},2200);}
@@ -2094,6 +2140,7 @@ function saveToLibrary(){
   setLibrary(lib);
   updateBackupInfo();
   pushPaciente(rec);
+  markSaved();
   setStatus(FB.user?"Paciente guardado ☁":"Paciente guardado ✓");
 }
 function fmtDate(iso){try{return new Date(iso).toLocaleString("es-GT",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return iso;}}
@@ -2116,7 +2163,7 @@ function renderLibrary(){
 }
 function loadRecord(id){
   const rec=getLibrary().find(r=>r.id===id);if(!rec)return;
-  applyData(rec.data);closeLibrary();setStatus("Paciente cargado");
+  applyData(rec.data);closeLibrary();markSaved();setStatus("Paciente cargado");
 }
 function deleteRecord(id){
   if(!confirm("¿Borrar esta valoración guardada? Esta acción no se puede deshacer."))return;
@@ -2613,6 +2660,7 @@ buildTipos();buildScores();buildRecBank();buildSecToggles();
   }
   injectMics();
   ensurePwdHash();
+  updateSaveState();
   if(!dictSupported()){
     // ocultar cualquier rastro; no romper nada
     console.log("Dictado por voz no disponible en este navegador.");
