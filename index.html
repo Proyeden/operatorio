@@ -166,7 +166,9 @@
   .rowsel select{flex:1;font-size:12px;padding:5px 7px;border:1px solid var(--line);
        border-radius:5px;background:var(--input)}
   /* ---- Recs ---- */
-  .rec-item{display:flex;align-items:flex-start;gap:8px;padding:4px 6px;font-size:12.5px;cursor:pointer;border-radius:6px}
+  .dm-flag{margin-top:10px;padding:10px 12px;background:#eef6f6;border:1px solid #cfe3e3;border-radius:8px}
+  .dm-flag-check{display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12.5px;line-height:1.45}
+  .dm-flag-check input{accent-color:var(--primary);width:17px;height:17px;margin-top:1px;flex:0 0 auto}
   /* secciones expandibles */
   .sec-row{border-bottom:1px solid #eef2f4}
   .sec-head{display:flex;align-items:center;gap:6px;padding:6px 4px}
@@ -181,6 +183,7 @@
   .sec-line:hover{background:#eef6f6}
   .sec-line input{accent-color:var(--primary);margin-top:2px;flex:0 0 auto}
   .sec-line-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 8px}
+  .rec-item{display:flex;align-items:flex-start;gap:8px;padding:4px 6px;font-size:12.5px;cursor:pointer;border-radius:6px}
   .rec-item:hover{background:#f4f8f9}
   .rec-item input{margin-top:2px;accent-color:var(--primary);flex:0 0 auto}
   .rec-tip{font-size:11px;color:var(--muted);background:#f5f9fa;border-radius:6px;padding:8px 10px;margin-bottom:12px;line-height:1.5}
@@ -404,6 +407,10 @@
         <div class="field"><label>Gineco-obstétricos</label><textarea id="a_go" oninput="render()"></textarea></div>
       </div>
       <div class="field"><label>Medicación actual</label><textarea id="a_med_act" oninput="render()"></textarea></div>
+      <div class="dm-flag">
+        <label class="dm-flag-check"><input type="checkbox" id="flag_dm" onchange="calc()">
+          <span><b>Paciente con diabetes mellitus</b> — activa el manejo perioperatorio de diabetes (ayuno, fármacos, insulina, metas)</span></label>
+      </div>
     </div></div>
 
     <div class="card"><h2>Hábitos y estilo de vida</h2><div class="card-body">
@@ -1320,7 +1327,7 @@ function planTromboprofilaxis(){
 /* ================= MANEJO PERIOPERATORIO DE DIABETES ================= */
 // ADA 2024/2025, Anesthesiology 2017, CPOC 2022. Esquemas de corrección por función renal.
 function tieneDiabetes(){
-  return chk("rcri_dm")||chk("m1")||chk("ch10")||chk("ch11")||
+  return chk("flag_dm")||chk("rcri_dm")||chk("m1")||chk("ch10")||chk("ch11")||
          /diabet|dm2|dm1|dm |mellitus/i.test(val("a_med"))||
          /insulin|metformin|glargin|nph|empagli|dapagli|canagli|glp|semaglu|dulaglu|gliclazi|glibencl|sitaglip|linaglip/i.test(val("a_med_act"));
 }
@@ -1342,13 +1349,16 @@ function tfgDiabetes(){
   return null;
 }
 function esquemaInsulina(reducido){
+  // Escala de corrección alineada al protocolo Emory / RABBIT 2 Surgery (Umpierrez, Diabetes Care 2011).
+  // Columna "reducido" = sensible a insulina / TFG baja / edad avanzada; "estándar" = usual.
   const filas=[
     ["< 180 mg/dl","0 U","0 U"],
-    ["180-219","2 U","1 U"],
-    ["220-259","4 U","2 U"],
-    ["260-299","6 U","3 U"],
-    ["300-349","8 U","4 U"],
-    ["≥ 350","10 U + avisar","5 U + avisar"],
+    ["180-219","3 U","2 U"],
+    ["220-259","4 U","3 U"],
+    ["260-299","5 U","4 U"],
+    ["300-349","6 U","5 U"],
+    ["350-399","7 U","6 U"],
+    ["≥ 400","8 U + avisar","7 U + avisar"],
   ];
   return {filas, reducido};
 }
@@ -1850,19 +1860,30 @@ function render(){
     <div class="muted" style="margin-bottom:5px">Indicada por riesgo de tromboembolismo venoso (Caprini ${scoreTotal("Caprini")})</div>
     <div class="recs">${tp.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
-  ${(function(){if(!secOn("antitrombo"))return "";const pa=filtLines("antitrombo",planAntitrombotico());if(!pa.length)return "";
+  ${(function(){if(!secOn("antitrombo"))return "";
+    const pa=filtLines("antitrombo",planAntitrombotico());
+    const manual=SEC_USERSET["antitrombo"] && SEC_STATE["antitrombo"];
+    if(!pa.length && !manual)return "";
+    const cuerpo = pa.length
+      ? `<div class="recs">${pa.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`
+      : `<div class="muted">Seleccione el anticoagulante o antiagregante del paciente en «Terapia antitrombótica» para generar el plan de suspensión y reinicio.</div>`;
     return `<h2>Manejo antitrombótico perioperatorio</h2>
     <div class="muted" style="margin-bottom:5px">Suspensión y reinicio de anticoagulantes y antiagregantes (CHEST 2022)</div>
-    <div class="recs">${pa.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
+    ${cuerpo}`;})()}
 
-  ${(function(){if(!secOn("diabetes"))return "";const d=planDiabetes();if(!d)return "";
+  ${(function(){if(!secOn("diabetes"))return "";const d=planDiabetes();
+    const manual=SEC_USERSET["diabetes"] && SEC_STATE["diabetes"];
+    if(!d && !manual)return "";
+    if(!d)return `<h2>Manejo perioperatorio de la diabetes</h2>
+      <div class="muted">Marque «Paciente con diabetes mellitus» en Antecedentes para generar el plan (ayuno, fármacos, insulina y metas).</div>`;
     const li=arr=>filtLines("diabetes",arr).map(x=>`<div class="ri">${esc(x)}</div>`).join("");
     const esq=d.esquema;
     const tabla=`<table class="dm-tbl"><tr><th>Glucemia capilar</th><th>Insulina rápida SC${esq.reducido?" (dosis reducida*)":""}</th></tr>
       ${esq.filas.map(f=>`<tr><td>${f[0]}</td><td><b>${esq.reducido?f[2]:f[1]}</b></td></tr>`).join("")}</table>
       <div class="muted" style="margin-top:3px">${esq.reducido
-        ?"*Esquema de dosis reducida (función renal disminuida y/o edad &gt;70 años, mayor riesgo de hipoglucemia). Administrar cada 4-6 h según glucometría; no acumular dosis."
-        :"Esquema estándar de corrección. Administrar cada 4-6 h según glucometría. En función renal disminuida (TFG &lt;45) considerar dosis reducidas."}</div>`;
+        ?"*Esquema de dosis reducida (paciente sensible a insulina, TFG disminuida o edad avanzada, mayor riesgo de hipoglucemia). Administrar cada 4-6 h según glucometría; no acumular dosis."
+        :"Esquema estándar de corrección. Administrar cada 4-6 h según glucometría. En paciente sensible, TFG disminuida o edad avanzada, usar la columna reducida."}</div>
+      <div class="callout" style="margin-top:6px;font-size:10.5px">La escala de corrección se basa en el protocolo Emory / RABBIT 2 Surgery (Umpierrez, Diabetes Care 2011). Es un <b>punto de partida orientativo</b>: la dosis debe ajustarse a la sensibilidad individual (peso, dosis diaria total previa, uso de esteroides). La escala móvil aislada no es tratamiento de fondo: en el postoperatorio se prefiere el esquema basal-bolo, que reduce complicaciones frente a la escala sola (RABBIT 2 Surgery).</div>`;
     return `<h2>Manejo perioperatorio de la diabetes</h2>
     <div class="muted" style="margin-bottom:6px">${d.tfg!==null?`TFG estimada: ${d.tfg} ml/min${d.renalBaja?" · función renal disminuida":" · función renal conservada"}. `:""}Meta glucémica perioperatoria 100-180 mg/dl (ADA 2026)</div>
     <div class="dm-grid">
@@ -1897,7 +1918,7 @@ function render(){
     <div class="sm">${esc(cl.nombre)}</div>
     <div class="sm" style="font-size:9.5px">${esc([cl.direccion,cl.telefono].filter(Boolean).join(" · "))}</div>
   </div>
-  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2026» (Diabetes Care. 2026;49(Suppl.1):S339–S355); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022); Kang DY et al., ensayo ASSURE-DES sobre aspirina en portadores de stent (J Am Coll Cardiol. 2024;84:2380–2389); y guías de manejo antitrombótico en cirugía oftalmológica (American Academy of Ophthalmology / CHEST 2022). Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
+  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2026» (Diabetes Care. 2026;49(Suppl.1):S339–S355); Umpierrez GE et al., ensayo RABBIT 2 Surgery sobre esquema basal-bolo vs. escala móvil en cirugía general (Diabetes Care. 2011;34:256–261); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022); Kang DY et al., ensayo ASSURE-DES sobre aspirina en portadores de stent (J Am Coll Cardiol. 2024;84:2380–2389); y guías de manejo antitrombótico en cirugía oftalmológica (American Academy of Ophthalmology / CHEST 2022). Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
   </div>`;
 
   document.getElementById("note").innerHTML=note;
