@@ -314,7 +314,17 @@
     .note-hd .kicker,.note-hd h1,.note-hd .sub{color:#fff!important}
     .note-body{padding:0 22px}
     .note h2{margin:16px 0 7px;background:#e6f3f3!important;border-left:4px solid #0e7c85!important;
-         color:#0a5157!important}
+         color:#0a5157!important;
+         break-after:avoid!important;page-break-after:avoid!important;break-inside:avoid!important}
+    /* el título arrastra su primer bloque de contenido: la primera fila de tabla o primer párrafo */
+    .note h2 + table tr:first-child,
+    .note h2 + .recs .ri:first-child,
+    .note h2 + .recs-ol,
+    .note h2 + .algo,
+    .note h2 + .muted{break-before:avoid!important;page-break-before:avoid!important}
+    .note h2 + table tr:first-child td{break-inside:avoid!important}
+    /* filas de tabla y renglones no se parten a la mitad */
+    .note tr, .note .ri, .note .recs-ol li{break-inside:avoid!important;page-break-inside:avoid!important}
     .note .risk-tbl th{background:#12324a!important;color:#fff!important}
     .note .frame{background:#fdf6e6!important}
     .note .algo.low{background:#eef7f1!important}
@@ -1977,7 +1987,7 @@ function downloadWord(){
 
   // 2) Cada <h2> → banda de color como tabla con bgcolor
   noteHTML = noteHTML.replace(/<h2>([\s\S]*?)<\/h2>/g, (m,txt)=>
-    `<table width="100%" cellpadding="0" cellspacing="0" style="margin:15pt 0 6pt"><tr>
+    `<table width="100%" cellpadding="0" cellspacing="0" style="margin:15pt 0 6pt;page-break-inside:avoid;page-break-after:avoid;mso-break-type:keep-with-next"><tr>
        <td bgcolor="#0A5157" width="5" style="font-size:1pt">&nbsp;</td>
        <td bgcolor="#0E7C85" style="padding:5pt 10pt;color:#FFFFFF;font-weight:bold;font-size:10pt;
            letter-spacing:.6pt;text-transform:uppercase">${txt}</td>
@@ -2066,6 +2076,13 @@ function collectData(){
     if(e.type==="checkbox")d.checks[e.id]=e.checked;
     else d.fields[e.id]=e.value;
   });
+  // estado de secciones de la nota (activación manual y líneas desmarcadas)
+  d.secState={...SEC_STATE};
+  d.secUserSet={...SEC_USERSET};
+  d.lineOff={...LINE_OFF};
+  // estado de recomendaciones (personalizadas/banco marcadas y toggles de las automáticas)
+  d.recState=REC_STATE.map(r=>({texto:r.texto,fase:r.fase,on:r.on,origen:r.origen}));
+  d.recUserToggled={...REC_USER_TOGGLED};
   return d;
 }
 function applyData(data){
@@ -2073,6 +2090,15 @@ function applyData(data){
   for(const id in (data.fields||{})){const e=document.getElementById(id);if(e&&e.type!=="checkbox")e.value=data.fields[id];}
   for(const id in (data.checks||{})){const e=document.getElementById(id);if(e&&e.type==="checkbox")e.checked=data.checks[id];}
   if(data.preset){presetMode=data.preset;const p=document.getElementById("notePreset");if(p)p.value=data.preset;}
+  // restaurar estado de secciones
+  if(data.secState){SEC_STATE={...data.secState};}
+  if(data.secUserSet){SEC_USERSET={...data.secUserSet};}
+  LINE_OFF = data.lineOff ? {...data.lineOff} : {};
+  // restaurar recomendaciones
+  if(data.recState){REC_STATE=data.recState.map(r=>({...r}));}
+  if(data.recUserToggled){REC_USER_TOGGLED={...data.recUserToggled};}
+  refreshSecToggles();
+  renderRecs();
   calc();
 }
 function autosave(){try{localStorage.setItem("preop_current",JSON.stringify(collectData()));}catch(e){}updateSaveState();}
@@ -2369,8 +2395,11 @@ async function pushFirmaAssets(o){
   }
   catch(e){
     console.log("push firma falló:",e);
-    if((""+e).includes("longer than")||(""+e).includes("1048487")||(""+e).toLowerCase().includes("size"))
+    const msg=(""+(e&&e.message||e));
+    if(msg.includes("longer than")||msg.includes("1048487")||msg.toLowerCase().includes("size"))
       alert("La imagen es demasiado grande para la nube (límite 1 MB por documento). Use una firma más pequeña.");
+    else if((e&&e.code==="permission-denied")||msg.toLowerCase().includes("permission"))
+      alert("Firebase rechazó guardar la firma por reglas de seguridad.\n\nActualice las reglas de Firestore para cubrir todo su usuario:\n\nmatch /usuarios/{uid}/{document=**} {\n  allow read, write: if request.auth != null && request.auth.uid == uid;\n}");
     return false;
   }
 }
@@ -2399,6 +2428,7 @@ function openFirmaModal(){
   const m=document.getElementById("firmaModal");
   m.classList.add("open");
   refreshFirmaModal();
+  if(FB&&FB.user)pullFirmaAssets();  // por si no se cargó al iniciar sesión
 }
 function closeFirmaModal(){document.getElementById("firmaModal").classList.remove("open");}
 function refreshFirmaModal(){
