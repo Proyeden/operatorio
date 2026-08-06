@@ -205,7 +205,13 @@
   .rec-pre{background:#3a7ca5}.rec-trans{background:#9a6f2e}.rec-post{background:#2e7d5b}
   .rec-auto{font-size:9px;font-weight:700;background:#e4eef0;color:var(--primary-dark);
        padding:1px 6px;border-radius:8px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em}
-  .rec-del{margin-left:auto;background:none;border:none;color:#c0787a;cursor:pointer;font-size:13px;padding:0 4px;flex:0 0 auto}
+  .rec-del{margin-left:6px;background:none;border:none;color:#c0787a;cursor:pointer;font-size:13px;padding:0 4px;flex:0 0 auto}
+  .rec-edit{margin-left:auto;background:none;border:none;color:#0e7c85;cursor:pointer;font-size:13px;padding:0 4px;flex:0 0 auto}
+  .rec-edit:hover{color:#0a5157}
+  .rec-edit-input{flex:1;margin:0 4px;padding:3px 7px;border:1px solid var(--primary);border-radius:5px;
+       font-size:12.5px;font-family:inherit;color:var(--ink)}
+  .rec-edit-input:focus{outline:none;box-shadow:0 0 0 2px rgba(14,124,133,.15)}
+  .rec-text{flex:1}
   .rec-del:hover{color:#a83a28}
   .rec-empty{font-size:11px;color:var(--muted);font-style:italic;padding:2px 6px}
   .rec-add{width:100%;margin-top:4px;font-size:12px;padding:6px 9px;border:1px dashed var(--line);
@@ -636,14 +642,8 @@
     </div></div>
 
     <div class="card"><h2>Secciones de la nota</h2><div class="card-body">
-      <div class="rec-tip">Active solo las secciones aplicables a este paciente. Se desactivan solas las que no correspondan (p. ej. diabetes o antitrombóticos si no hay datos).</div>
+      <div class="rec-tip">Active solo las secciones aplicables a este paciente. Se desactivan solas las que no correspondan (p. ej. diabetes o antitrombóticos si no hay datos). Expanda con ▸ para elegir líneas: en <b>Profilaxis antibiótica</b> marque el esquema que usará (1.ª línea, alternativa, alergia…).</div>
       <div id="secToggles"></div>
-      <div id="profOptions" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
-        <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:6px">Esquema de profilaxis antibiótica</div>
-        <div class="field"><label>Esquema a utilizar (según cirugía)</label>
-          <select id="prof_esquema" onchange="render()"></select></div>
-        <div class="hint">El esquema elegido se resalta en la nota; las demás opciones aparecen como alternativas de referencia.</div>
-      </div>
       <div id="dmOptions" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
         <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:6px">Opciones de diabetes</div>
         <div class="grid2">
@@ -1144,10 +1144,17 @@ function renderRecs(){
     box.innerHTML = items.length? items.map(r=>{
       const k=recKey(r.texto);
       const badge = r.origen==="auto"?`<span class="rec-auto">sugerida</span>`:"";
-      const del = r.origen==="custom"?`<button class="rec-del" onclick="delRec('${k.replace(/'/g,"\\'")}')" title="Eliminar">✕</button>`:"";
+      if(r.origen==="custom"){
+        const cid=r.cid||"";
+        return `<label class="rec-item" data-cid="${cid}"><input type="checkbox" ${r.on?"checked":""}
+          onchange="toggleRec('${k.replace(/'/g,"\\'")}',this.checked)">
+          <span class="rec-text">${esc(r.texto)}</span>
+          <button class="rec-edit" onclick="editRec('${cid}')" title="Editar">✎</button>
+          <button class="rec-del" onclick="delRecById('${cid}')" title="Eliminar">✕</button></label>`;
+      }
       return `<label class="rec-item"><input type="checkbox" ${r.on?"checked":""}
         onchange="toggleRec('${k.replace(/'/g,"\\'")}',this.checked)">
-        <span>${esc(r.texto)}${badge}</span>${del}</label>`;
+        <span>${esc(r.texto)}${badge}</span></label>`;
     }).join("") : `<div class="rec-empty">—</div>`;
   });
 }
@@ -1163,13 +1170,42 @@ function addRec(ev,fase){
   if(ev.key!=="Enter")return;
   const t=ev.target.value.trim();
   if(!t)return;
-  REC_STATE.push({texto:t,fase,on:true,origen:"custom"});
+  REC_STATE.push({texto:t,fase,on:true,origen:"custom",cid:"c"+Date.now()+Math.floor(Math.random()*1000)});
   ev.target.value="";
   renderRecs();render();
 }
 function delRec(k){
   REC_STATE=REC_STATE.filter(x=>recKey(x.texto)!==k);
   renderRecs();render();
+}
+function delRecById(cid){
+  REC_STATE=REC_STATE.filter(x=>x.cid!==cid);
+  renderRecs();render();
+}
+function editRec(cid){
+  const r=REC_STATE.find(x=>x.cid===cid);
+  if(!r)return;
+  const item=document.querySelector(`.rec-item[data-cid="${cid}"]`);
+  if(!item)return;
+  const span=item.querySelector(".rec-text");
+  if(!span)return;
+  // reemplazar el texto por un input editable
+  const input=document.createElement("input");
+  input.type="text"; input.className="rec-edit-input"; input.value=r.texto;
+  span.replaceWith(input);
+  // ocultar los botones mientras se edita
+  item.querySelectorAll(".rec-edit,.rec-del").forEach(b=>b.style.display="none");
+  input.focus(); input.select();
+  const guardar=()=>{
+    const nuevo=input.value.trim();
+    if(nuevo)r.texto=nuevo;
+    renderRecs(); render();
+  };
+  input.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();guardar();}
+    else if(e.key==="Escape"){renderRecs();}
+  });
+  input.addEventListener("blur",guardar);
 }
 
 /* ================= HELPERS ================= */
@@ -1504,20 +1540,6 @@ function planDiabetes(){
     P.monitoreo.push("Deterioro renal: mayor riesgo de hipoglucemia por depuración reducida; considerar metas en el extremo alto del rango y controles más frecuentes.");
   return P;
 }
-// Líneas de diabetes como lista plana (para selección línea por línea)
-function actualizarSelectorProfilaxis(){
-  const sel=document.getElementById("prof_esquema");
-  const box=document.getElementById("profOptions");
-  if(!sel||!box)return;
-  const tipo=val("tipo");
-  box.style.display=(tipo && secOn("profx"))?"block":"none";
-  if(!tipo){sel.innerHTML="";return;}
-  const p=PROF[tipo]||PROF["Otra/General"];
-  // recordar la selección actual si sigue siendo válida
-  const prev=parseInt(sel.value);
-  sel.innerHTML=p.map((o,i)=>`<option value="${i}">${o.n}</option>`).join("");
-  if(!isNaN(prev)&&prev<p.length)sel.value=prev; else sel.value="0";
-}
 /* ================= ARRITMIAS / TRASTORNOS DEL RITMO ================= */
 // AHA/ACC 2024 perioperatorio; FA: ACC/AHA/ACCP/HRS 2023. Enfoque: conducta + a quién referir / qué estudiar.
 function hayArritmia(){
@@ -1632,6 +1654,13 @@ function diabetesLines(){
   const d=planDiabetes();
   if(!d)return [];
   return [...d.ayuno, ...d.farmacos, ...d.insulina, ...d.monitoreo];
+}
+// Esquemas de profilaxis del tipo de cirugía, como líneas seleccionables (marca/desmarca cuáles incluir)
+function profilaxisLines(){
+  const tipo=val("tipo");
+  if(!tipo)return [];
+  const p=PROF[tipo]||PROF["Otra/General"];
+  return p.map(o=>`${o.n}: ${o.t}`);
 }
 
 /* ================= ANTITROMBÓTICOS (CHEST 2022) ================= */
@@ -1804,8 +1833,6 @@ function calc(){
   if(dmOpt)dmOpt.style.display=(tieneDiabetes()&&secOn("diabetes"))?"block":"none";
   const ciedBox=document.getElementById("arr_cied_box");
   if(ciedBox)ciedBox.style.display=chk("arr_cied")?"block":"none";
-  // Selector de esquema de profilaxis según el tipo de cirugía
-  actualizarSelectorProfilaxis();
   const dmt=document.getElementById("dm_tfg_disp");
   if(dmt){const t=tfgCKDEPI();dmt.value=(t!==null)?t+" ml/min":"— (falta creatinina/edad/sexo)";}
   render();
@@ -1859,13 +1886,10 @@ function suggestions(){
   const itq=indiceTabaquico();
   if(itq!==null&&itq>=10)out.push([`Índice tabáquico ${itq.toFixed(1)} paquetes-año: recomendar cese del tabaco al menos 4 semanas antes de la cirugía.`,"pre"]);
   const r=rt24();if(r!==null)out.push([`Terapia hídrica basal: ${Math.round(r)} ml/24h (Holliday-Segar). Ajustar a pérdidas quirúrgicas y estado clínico.`,"trans"]);
-  // Profilaxis antibiótica concordante con el esquema ELEGIDO en la sección de profilaxis
-  const tipoProf=val("tipo");
-  if(tipoProf){
-    const p=PROF[tipoProf]||PROF["Otra/General"];
-    const idx=Math.min(parseInt(val("prof_esquema"))||0, p.length-1);
-    const eleg=p[idx]||p[0];
-    if(eleg)out.push([`Profilaxis antibiótica (${eleg.n}): ${eleg.t}`,"pre"]);
+  // Profilaxis antibiótica: solo los esquemas seleccionados en la sección de profilaxis
+  if(val("tipo")){
+    const L=filtLines("profx",profilaxisLines());
+    L.forEach(x=>out.push([`Profilaxis antibiótica — ${x}`,"pre"]));
   }
   return out;
 }
@@ -1875,7 +1899,7 @@ function suggestions(){
 const SECCIONES=[
   {id:"algo",  label:"Algoritmo cardíaco perioperatorio", auto:()=>true, lines:false},
   {id:"ayuno", label:"Ayuno preoperatorio", auto:()=>true, lines:()=>planAyuno()},
-  {id:"profx", label:"Profilaxis antibiótica", auto:()=>true, lines:false},
+  {id:"profx", label:"Profilaxis antibiótica", auto:()=>true, lines:()=>profilaxisLines()},
   {id:"tromboprofx", label:"Tromboprofilaxis farmacológica", auto:()=>scoreTotal("Caprini")>=3, lines:()=>planTromboprofilaxis()},
   {id:"antitrombo", label:"Manejo antitrombótico (anticoag./antiagreg.)", auto:()=>planAntitrombotico().length>0, lines:()=>planAntitrombotico()},
   {id:"arritmias", label:"Manejo de arritmias / trastornos del ritmo", auto:()=>hayArritmia(), lines:()=>arritmiaLines()},
@@ -1888,7 +1912,16 @@ let LINE_OFF={};         // "secid|textohash" -> true si el usuario la desmarcó
 let SEC_OPEN={};         // id -> bool (sección expandida en el panel)
 
 function lineKey(secid,texto){return secid+"|"+texto.slice(0,60);}
-function lineOn(secid,texto){return !LINE_OFF[lineKey(secid,texto)];}
+function lineOn(secid,texto){
+  const k=lineKey(secid,texto);
+  if(k in LINE_OFF)return !LINE_OFF[k];       // el usuario ya decidió
+  // default especial para profilaxis: solo la 1.ª opción (índice 0) viene marcada
+  if(secid==="profx"){
+    const arr=profilaxisLines();
+    return arr.indexOf(texto)===0;
+  }
+  return true;                                 // resto de secciones: todo marcado por defecto
+}
 // filtra un arreglo de líneas dejando solo las activas
 function filtLines(secid,arr){return arr.filter(t=>lineOn(secid,t));}
 
@@ -1933,7 +1966,7 @@ function renderSecLines(id){
   }).join("");
 }
 function onLineToggle(secid,key,on){
-  if(on)delete LINE_OFF[key]; else LINE_OFF[key]=true;
+  LINE_OFF[key]=!on;   // guardar estado explícito: false=activa, true=desmarcada
   render();
 }
 function onSecToggle(id,on){
@@ -1964,8 +1997,6 @@ function render(){
   // ---- build note ----
   const tipo=val("tipo");
   const prof=PROF[tipo]||PROF["Otra/General"];
-  const profIdx=Math.min(parseInt(val("prof_esquema"))||0, prof.length-1);
-  const profElegido=prof[profIdx]||prof[0];
   // ---- Algoritmo escalonado AHA/ACC 2024 ----
   const rcriT=scoreTotal("RCRI"), aubT=scoreTotal("AUB-HAS2");
   // Riesgo elevado = RCRI >1 (≥2) o riesgo quirúrgico alto o AUB-HAS2 ≥2 (≥1% MACE)
@@ -2007,7 +2038,7 @@ function render(){
       <td>${esc(interp(name))}</td></tr>`;
   }).join("") : `<tr><td colspan="4" style="text-align:center;color:#93a0ac;font-style:italic;padding:12px">Sin escalas seleccionadas para la nota.</td></tr>`;
 
-  const labVal=(id)=>{const v=val(id);return v?esc(v):"—";};
+  const labVal=(id,unidad)=>{const v=val(id);return v?esc(v)+(unidad?" "+unidad:""):"—";};
 
   const note=`
   <div class="note-hd">
@@ -2066,11 +2097,11 @@ function render(){
   <h2>Estudios complementarios</h2>
   <table><tr><td class="lab">EKG</td><td colspan="3">${orDash(val("ekg"))}</td></tr>
   <tr><td class="lab">Rx tórax</td><td colspan="3">${orDash(val("rx"))}</td></tr>
-  <tr><td class="lab-sm">WBC</td><td>${labVal("l_wbc")}</td><td class="lab-sm">Creatinina</td><td>${labVal("l_cr")}</td></tr>
-  <tr><td class="lab-sm">Hemoglobina</td><td>${labVal("l_hb")}</td><td class="lab-sm">BUN</td><td>${labVal("l_bun")}</td></tr>
-  <tr><td class="lab-sm">Hematocrito</td><td>${labVal("l_hto")}</td><td class="lab-sm">Glucosa</td><td>${labVal("l_glu")}</td></tr>
-  <tr><td class="lab-sm">Plaquetas</td><td>${labVal("l_plt")}</td><td class="lab-sm">Sodio</td><td>${labVal("l_na")}</td></tr>
-  <tr><td class="lab-sm">Neutrófilos</td><td>${labVal("l_neu")}</td><td class="lab-sm">Potasio</td><td>${labVal("l_k")}</td></tr>
+  <tr><td class="lab-sm">WBC</td><td>${labVal("l_wbc","/mm³")}</td><td class="lab-sm">Creatinina</td><td>${labVal("l_cr","mg/dl")}</td></tr>
+  <tr><td class="lab-sm">Hemoglobina</td><td>${labVal("l_hb","g/dl")}</td><td class="lab-sm">BUN</td><td>${labVal("l_bun","mg/dl")}</td></tr>
+  <tr><td class="lab-sm">Hematocrito</td><td>${labVal("l_hto","%")}</td><td class="lab-sm">Glucosa</td><td>${labVal("l_glu","mg/dl")}</td></tr>
+  <tr><td class="lab-sm">Plaquetas</td><td>${labVal("l_plt","/mm³")}</td><td class="lab-sm">Sodio</td><td>${labVal("l_na","mEq/l")}</td></tr>
+  <tr><td class="lab-sm">Neutrófilos</td><td>${labVal("l_neu","%")}</td><td class="lab-sm">Potasio</td><td>${labVal("l_k","mEq/l")}</td></tr>
   <tr><td class="lab-sm">Coagulación</td><td colspan="3">TP: ${orDash(val("l_tp"))} seg&nbsp;&nbsp; TPT: ${orDash(val("l_tpt"))} seg&nbsp;&nbsp; INR: ${orDash(val("l_inr"))}</td></tr>
   ${(val("l_ntprobnp")||val("l_bnp")||val("l_tn"))?`<tr><td class="lab-sm">Biomarcadores</td><td colspan="3">${
       [val("l_ntprobnp")?"NT-proBNP: "+esc(val("l_ntprobnp"))+" ng/L":"",
@@ -2090,10 +2121,12 @@ function render(){
     return `<h2>Ayuno preoperatorio</h2>
   <div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
-  ${secOn("profx")?`<h2>Profilaxis antibiótica sugerida</h2>
-  <table><tr><td class="lab">Esquema elegido</td><td><b>${esc(profElegido.n)}:</b> ${esc(profElegido.t)}</td></tr>
-  ${prof.length>1?`<tr><td class="lab">Alternativas</td><td style="color:#5b6b7a">${prof.filter((o,i)=>i!==profIdx).map(o=>`<b>${esc(o.n)}:</b> ${esc(o.t)}`).join("<br>")}</td></tr>`:""}</table>
-  <div class="muted" style="margin-top:4px">Administrar 30-60 min antes de la incisión. Redosificar si la cirugía se prolonga (&gt;3-4 h) o hay pérdida hemática significativa.</div>`:""}
+  ${(function(){if(!secOn("profx"))return "";
+    const L=filtLines("profx",profilaxisLines());
+    if(!L.length)return "";
+    return `<h2>Profilaxis antibiótica sugerida</h2>
+    <div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>
+    <div class="muted" style="margin-top:4px">Administrar 30-60 min antes de la incisión. Redosificar si la cirugía se prolonga (&gt;3-4 h) o hay pérdida hemática significativa. Ajustar a patrones de resistencia local.</div>`;})()}
 
   ${(function(){if(!secOn("tromboprofx"))return "";const tp=filtLines("tromboprofx",planTromboprofilaxis());if(!tp.length)return "";
     return `<h2>Tromboprofilaxis farmacológica</h2>
@@ -2317,7 +2350,7 @@ function collectData(){
   d.secUserSet={...SEC_USERSET};
   d.lineOff={...LINE_OFF};
   // estado de recomendaciones (personalizadas/banco marcadas y toggles de las automáticas)
-  d.recState=REC_STATE.map(r=>({texto:r.texto,fase:r.fase,on:r.on,origen:r.origen}));
+  d.recState=REC_STATE.map(r=>({texto:r.texto,fase:r.fase,on:r.on,origen:r.origen,cid:r.cid}));
   d.recUserToggled={...REC_USER_TOGGLED};
   return d;
 }
