@@ -267,6 +267,8 @@
   @media(max-width:620px){.note .dm-grid{grid-template-columns:1fr}}
   .note .dm-sub{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
        color:#0a5157;margin:9px 0 3px;padding-bottom:2px;border-bottom:1px solid #d7e6e6}
+  .note .arr-sub{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+       color:#0a5157;margin:9px 0 3px;padding-bottom:2px;border-bottom:1px solid #d7e6e6}
   .note .dm-tbl{width:100%;border-collapse:collapse;margin:4px 0 2px;max-width:340px}
   .note .dm-tbl th{background:#0e7c85;color:#fff;padding:5px 10px;font-size:10px;text-align:left;
        text-transform:uppercase;letter-spacing:.04em}
@@ -603,6 +605,34 @@
         </select></div>
       </div>
       <div id="at_plan_prev" class="score-interp" style="margin-top:10px"></div>
+    </div></div>
+
+    <div class="card"><h2>Arritmias / trastornos del ritmo</h2><div class="card-body">
+      <div class="hint" style="margin-bottom:8px">Marque los hallazgos del ritmo. La herramienta orienta sobre conducta perioperatoria y <b>a quién referir o qué estudios pedir</b> (AHA/ACC 2024; FA: ACC/AHA/ACCP/HRS 2023).</div>
+      <label class="check"><input type="checkbox" id="arr_fa_cronica" onchange="calc()"><span>FA/flutter crónico conocido</span></label>
+      <label class="check"><input type="checkbox" id="arr_fa_novo" onchange="calc()"><span>FA/flutter de nuevo diagnóstico (en esta valoración)</span></label>
+      <label class="check"><input type="checkbox" id="arr_brady" onchange="calc()"><span>Bradicardia / bloqueo AV (1.º, 2.º, 3.er grado, bloqueo bifascicular)</span></label>
+      <label class="check"><input type="checkbox" id="arr_tsv" onchange="calc()"><span>Taquicardia supraventricular (TPSV, taquicardia auricular)</span></label>
+      <label class="check"><input type="checkbox" id="arr_ev" onchange="calc()"><span>Extrasístoles ventriculares frecuentes / TV no sostenida</span></label>
+      <label class="check"><input type="checkbox" id="arr_tv" onchange="calc()"><span>TV sostenida / antecedente de arritmia ventricular maligna</span></label>
+      <label class="check"><input type="checkbox" id="arr_qt" onchange="calc()"><span>QT prolongado (congénito o por fármacos)</span></label>
+      <label class="check"><input type="checkbox" id="arr_cied" onchange="calc()"><span>Portador de dispositivo (marcapasos / DAI / TRC)</span></label>
+      <div id="arr_cied_box" style="display:none;margin:6px 0 0 24px;padding-left:10px;border-left:2px solid var(--line)">
+        <div class="grid2">
+          <div class="field"><label>Tipo de dispositivo</label><select id="arr_cied_tipo" onchange="calc()">
+            <option value="">—</option><option>Marcapasos</option><option>DAI (desfibrilador)</option><option>TRC (resincronizador)</option>
+          </select></div>
+          <div class="field"><label>¿Dependiente de marcapasos?</label><select id="arr_cied_dep" onchange="calc()">
+            <option value="">Desconocido</option><option>Sí</option><option>No</option>
+          </select></div>
+        </div>
+        <label class="check"><input type="checkbox" id="arr_cied_emi" onchange="calc()"><span>Se anticipa electrocauterio (sobre todo por encima del ombligo)</span></label>
+      </div>
+      <label class="check" style="margin-top:6px"><input type="checkbox" id="arr_inestable" onchange="calc()"><span><b>Signos de inestabilidad</b> (síncope, angina, ICC, hipotensión atribuibles a la arritmia)</span></label>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px;text-transform:uppercase">Datos que orientan qué estudio pedir</div>
+      <label class="check"><input type="checkbox" id="arr_sintomas" onchange="calc()"><span>Síntomas de arritmia intermitente (palpitaciones, presíncope, síncope) con EKG normal</span></label>
+      <label class="check"><input type="checkbox" id="arr_estructural" onchange="calc()"><span>Sospecha de cardiopatía estructural (disnea no explicada, ICC nueva/que empeora, soplo no estudiado)</span></label>
+      <label class="check"><input type="checkbox" id="arr_resuelta" onchange="calc()"><span>Antecedente de arritmia <b>resuelta</b>, sin tratamiento actual, EKG normal y asintomático</span></label>
     </div></div>
 
     <div class="card"><h2>Secciones de la nota</h2><div class="card-body">
@@ -1426,6 +1456,116 @@ function planDiabetes(){
   return P;
 }
 // Líneas de diabetes como lista plana (para selección línea por línea)
+/* ================= ARRITMIAS / TRASTORNOS DEL RITMO ================= */
+// AHA/ACC 2024 perioperatorio; FA: ACC/AHA/ACCP/HRS 2023. Enfoque: conducta + a quién referir / qué estudiar.
+function hayArritmia(){
+  return ["arr_fa_cronica","arr_fa_novo","arr_brady","arr_tsv","arr_ev","arr_tv","arr_qt","arr_cied","arr_inestable",
+          "arr_sintomas","arr_estructural","arr_resuelta"]
+    .some(id=>chk(id));
+}
+function planArritmias(){
+  if(!hayArritmia())return null;
+  const P={general:[],conducta:[],estudios:[],referir:[]};
+  const inestable=chk("arr_inestable");
+
+  if(inestable){
+    P.general.push("⚠ Inestabilidad hemodinámica atribuible a la arritmia: contraindica la cirugía electiva. Estabilizar primero; si es una taquiarritmia con compromiso, considerar cardioversión eléctrica urgente. Referir a cardiología/urgencias antes de programar.");
+  }
+
+  // ---- FA crónica ----
+  if(chk("arr_fa_cronica")){
+    P.conducta.push("FA/flutter crónico: continuar el control de frecuencia habitual (betabloqueador, diltiazem/verapamilo o digoxina); no suspender bruscamente. Meta de frecuencia < 110 lpm en reposo si asintomático.");
+    P.conducta.push("Manejar la anticoagulación como en la sección antitrombótica (según CHA₂DS₂-VASc y riesgo hemorrágico); el puenteo solo en muy alto riesgo trombótico.");
+    P.estudios.push("EKG reciente y frecuencia cardíaca documentada. Si hay respuesta ventricular rápida no controlada o síntomas nuevos: optimizar antes de cirugía electiva.");
+  }
+  // ---- FA de novo ----
+  if(chk("arr_fa_novo")){
+    P.general.push("FA/flutter de nuevo diagnóstico: identificar y tratar causas reversibles (dolor, anemia, hipovolemia, alteraciones de electrolitos, hipoxia, hipertiroidismo, infección).");
+    P.conducta.push("Sin inestabilidad: control de frecuencia de primera línea (betabloqueador; diltiazem si no hay disfunción sistólica). El control del ritmo se reserva para inestabilidad o síntomas refractarios.");
+    P.conducta.push("Anticoagulación: decisión individualizada por CHA₂DS₂-VASc y el riesgo hemorrágico perioperatorio (ACC/AHA 2023). Nota: el CHA₂DS₂-VASc no fue derivado en FA de aparición perioperatoria, por lo que la decisión debe individualizarse.");
+    P.estudios.push("EKG de 12 derivaciones, electrolitos (K⁺, Mg⁺⁺), función tiroidea (TSH), hemograma; ecocardiograma para valorar función ventricular y descartar cardiopatía estructural.");
+    P.referir.push("Referir a cardiología para estratificación de riesgo tromboembólico, decisión de anticoagulación y seguimiento — la FA perioperatoria tiene alto riesgo de recurrencia y no debe considerarse un evento aislado.");
+  }
+  // ---- Bradiarritmia / bloqueo ----
+  if(chk("arr_brady")){
+    P.conducta.push("Bradicardia/bloqueo: revisar fármacos cronotrópicos negativos (betabloqueador, diltiazem, digoxina) y causas reversibles (isquemia, electrolitos, hipotiroidismo).");
+    P.estudios.push("EKG; ante bloqueo AV de 2.º grado Mobitz II, bloqueo completo o bifascicular con síntomas: Holter y ecocardiograma.");
+    P.referir.push("Referir a cardiología/electrofisiología: el bloqueo AV avanzado sintomático o de alto grado puede requerir marcapasos (transitorio o definitivo) antes de la cirugía. El bloqueo bifascicular asintomático rara vez requiere marcapasos profiláctico, pero debe evaluarse.");
+  }
+  // ---- TSV ----
+  if(chk("arr_tsv")){
+    P.conducta.push("Taquicardia supraventricular: si es paroxística y el paciente está estable, optimizar control; maniobras vagales/adenosina para episodios agudos. Continuar el tratamiento de base.");
+    P.estudios.push("EKG (idealmente durante el episodio) y electrolitos.");
+    P.referir.push("TSV recurrente o sintomática: referir a cardiología; en casos seleccionados la ablación previa es preferible a repetir episodios perioperatorios.");
+  }
+  // ---- Extrasístoles / TVNS ----
+  if(chk("arr_ev")){
+    P.general.push("Extrasístoles ventriculares o TV no sostenida: en corazón estructuralmente sano suelen ser benignas y NO contraindican la cirugía ni requieren tratamiento antiarrítmico específico.");
+    P.estudios.push("Descartar cardiopatía estructural e isquemia: ecocardiograma; considerar Holter si son muy frecuentes o sintomáticas; corregir electrolitos.");
+    P.referir.push("Referir a cardiología solo si hay cardiopatía estructural, síncope, o carga ectópica muy alta (p. ej. > 10-15%).");
+  }
+  // ---- TV sostenida / maligna ----
+  if(chk("arr_tv")){
+    P.general.push("⚠ TV sostenida o antecedente de arritmia ventricular maligna: marcador de riesgo elevado. La cirugía electiva no debe programarse sin evaluación cardiológica previa.");
+    P.estudios.push("Ecocardiograma (función ventricular), valoración de isquemia y de indicación de DAI; electrolitos.");
+    P.referir.push("Referir a cardiología/electrofisiología antes de cirugía electiva. Optimizar tratamiento antiarrítmico y valorar necesidad de DAI.");
+  }
+  // ---- QT prolongado ----
+  if(chk("arr_qt")){
+    P.conducta.push("QT prolongado: evitar/minimizar fármacos que prolongan el QT (algunos antieméticos como ondansetrón/droperidol, ciertos antibióticos y antiarrítmicos); corregir K⁺ y Mg⁺⁺ agresivamente.");
+    P.estudios.push("EKG con QTc medido; revisar lista de medicamentos contra bases de QT (p. ej. CredibleMeds); electrolitos.");
+    P.referir.push("QT congénito o QTc muy prolongado: referir a cardiología; coordinar plan anestésico para evitar desencadenantes de torsades.");
+  }
+  // ---- Dispositivo (CIED) ----
+  if(chk("arr_cied")){
+    const tipo=val("arr_cied_tipo"), dep=val("arr_cied_dep"), emi=chk("arr_cied_emi");
+    P.general.push(`Portador de ${tipo||"dispositivo cardíaco (CIED)"}: elaborar un plan de manejo del dispositivo ANTES de la cirugía si se anticipa interferencia electromagnética (AHA/ACC 2024).`);
+    P.conducta.push("Tener un imán disponible en quirófano. Colocar la placa del electrocauterio lo más lejos posible del generador; preferir electrocauterio bipolar o cortes cortos si es monopolar.");
+    if(/DAI|TRC/.test(tipo))
+      P.conducta.push("DAI/TRC-D: desactivar las terapias de taquiarritmia antes de la cirugía (reprogramación o imán sobre el generador) para evitar descargas por interferencia. Reactivar antes de salir de monitorización. Un imán sobre un DAI inhibe las descargas pero NO cambia el modo de estimulación.");
+    if(dep==="Sí")
+      P.conducta.push("Paciente dependiente de marcapasos: reprogramar a modo asincrónico (p. ej. VOO/DOO) antes de la cirugía si habrá electrocauterio; el imán sobre un marcapasos suele lograr modo asincrónico, pero verificar la respuesta del modelo.");
+    if(emi)
+      P.general.push("Electrocauterio anticipado (más aún por encima del ombligo): mayor riesgo de interferencia; extremar las medidas anteriores y mantener monitorización continua.");
+    P.estudios.push("Interrogación del dispositivo reciente (idealmente < 6-12 meses; DAI < 6 meses): confirmar tipo, dependencia, umbral, batería y programación.");
+    P.referir.push("Coordinar con el equipo que controla el dispositivo (cardiología/electrofisiología o la casa fabricante) la reprogramación peri-operatoria y la reactivación posterior.");
+  }
+
+  // ---- Decisión dirigida de estudios: Holter vs Ecocardiograma ----
+  // Ecocardiograma: pregunta estructural. Holter: pregunta eléctrica/intermitente.
+  const pedirEco = chk("arr_estructural") || chk("arr_fa_novo") || chk("arr_tv") || chk("arr_ev");
+  const pedirHolter = chk("arr_sintomas") || chk("arr_brady") || chk("arr_tsv");
+  if(pedirEco){
+    let motivos=[];
+    if(chk("arr_estructural"))motivos.push("disnea/ICC/soplo no explicados");
+    if(chk("arr_fa_novo"))motivos.push("FA de novo (función ventricular y cardiopatía subyacente)");
+    if(chk("arr_tv"))motivos.push("arritmia ventricular (definir cardiopatía estructural)");
+    if(chk("arr_ev"))motivos.push("extrasístoles/TVNS (descartar cardiopatía estructural)");
+    P.estudios.push(`Considerar ECOCARDIOGRAMA — pregunta estructural (¿hay cardiopatía?): ${motivos.join("; ")}. Cambia la conducta si revela disfunción ventricular o valvulopatía significativa.`);
+  }
+  if(pedirHolter){
+    let motivos=[];
+    if(chk("arr_sintomas"))motivos.push("síntomas de arritmia intermitente con EKG normal (capturar el evento)");
+    if(chk("arr_brady"))motivos.push("bradiarritmia/bloqueo (buscar pausas o bloqueo AV avanzado intermitente)");
+    if(chk("arr_tsv"))motivos.push("TSV paroxística no documentada / cuantificar episodios");
+    P.estudios.push(`Considerar HOLTER — pregunta eléctrica e intermitente (¿qué hace el ritmo fuera del EKG?): ${motivos.join("; ")}.`);
+  }
+  if(chk("arr_resuelta") && !pedirEco && !pedirHolter && !chk("arr_inestable")){
+    P.general.push("Antecedente de arritmia resuelta, sin tratamiento actual, EKG normal y asintomático: bajo riesgo arrítmico. Documentar tipo de arritmia previa, forma de resolución y tiempo libre de recurrencias. NO requiere Holter ni ecocardiograma dirigidos a la arritmia (evitar sobrestudio que retrasa la cirugía).");
+    P.general.push("Excepción: si la arritmia previa fue FIBRILACIÓN AURICULAR, aunque hoy esté en ritmo sinusal, valorar riesgo tromboembólico (CHA₂DS₂-VASc) y considerar ecocardiograma, pues el riesgo de fondo persiste.");
+    P.conducta.push("Corregir electrolitos y vigilar recurrencia en el postoperatorio: el estrés quirúrgico es un desencadenante clásico en pacientes con sustrato arrítmico conocido.");
+  }
+
+  // Seguimiento común
+  P.general.push("Vigilar en el postoperatorio la aparición o recurrencia de arritmias; corregir desencadenantes (electrolitos, dolor, anemia, hipoxia) de forma temprana.");
+  return P;
+}
+function arritmiaLines(){
+  const a=planArritmias();
+  if(!a)return [];
+  return [...a.general, ...a.conducta, ...a.estudios, ...a.referir];
+}
+
 function diabetesLines(){
   const d=planDiabetes();
   if(!d)return [];
@@ -1600,6 +1740,8 @@ function calc(){
   // opciones de diabetes: mostrar solo si hay diabetes y la sección está activa
   const dmOpt=document.getElementById("dmOptions");
   if(dmOpt)dmOpt.style.display=(tieneDiabetes()&&secOn("diabetes"))?"block":"none";
+  const ciedBox=document.getElementById("arr_cied_box");
+  if(ciedBox)ciedBox.style.display=chk("arr_cied")?"block":"none";
   const dmt=document.getElementById("dm_tfg_disp");
   if(dmt){const t=tfgCKDEPI();dmt.value=(t!==null)?t+" ml/min":"— (falta creatinina/edad/sexo)";}
   render();
@@ -1664,6 +1806,7 @@ const SECCIONES=[
   {id:"profx", label:"Profilaxis antibiótica", auto:()=>true, lines:false},
   {id:"tromboprofx", label:"Tromboprofilaxis farmacológica", auto:()=>scoreTotal("Caprini")>=3, lines:()=>planTromboprofilaxis()},
   {id:"antitrombo", label:"Manejo antitrombótico (anticoag./antiagreg.)", auto:()=>planAntitrombotico().length>0, lines:()=>planAntitrombotico()},
+  {id:"arritmias", label:"Manejo de arritmias / trastornos del ritmo", auto:()=>hayArritmia(), lines:()=>arritmiaLines()},
   {id:"diabetes", label:"Manejo perioperatorio de diabetes", auto:()=>tieneDiabetes(), lines:()=>diabetesLines()},
   {id:"hidrico", label:"Plan hídrico", auto:()=>true, lines:false},
 ];
@@ -1894,6 +2037,25 @@ function render(){
     <div class="muted" style="margin-bottom:5px">Suspensión y reinicio de anticoagulantes y antiagregantes (CHEST 2022)</div>
     ${cuerpo}`;})()}
 
+  ${(function(){if(!secOn("arritmias"))return "";
+    const a=planArritmias();
+    const manual=SEC_USERSET["arritmias"] && SEC_STATE["arritmias"];
+    if(!a && !manual)return "";
+    if(!a)return `<h2>Manejo de arritmias / trastornos del ritmo</h2>
+      <div class="muted">Marque los hallazgos del ritmo en «Arritmias / trastornos del ritmo» para generar la conducta y las referencias.</div>`;
+    const bloque=(titulo,arr)=>{
+      const L=filtLines("arritmias",arr);
+      return L.length?`<div class="arr-sub">${titulo}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";
+    };
+    const cuerpo = bloque("Consideraciones generales",a.general)
+      + bloque("Conducta perioperatoria",a.conducta)
+      + bloque("Estudios sugeridos",a.estudios)
+      + bloque("A quién referir",a.referir);
+    if(!cuerpo)return "";
+    return `<h2>Manejo de arritmias / trastornos del ritmo</h2>
+    <div class="muted" style="margin-bottom:5px">Orientación perioperatoria (AHA/ACC 2024; FA: ACC/AHA/ACCP/HRS 2023)</div>
+    ${cuerpo}`;})()}
+
   ${(function(){if(!secOn("diabetes"))return "";const d=planDiabetes();
     const manual=SEC_USERSET["diabetes"] && SEC_STATE["diabetes"];
     if(!d && !manual)return "";
@@ -1941,7 +2103,7 @@ function render(){
     <div class="sm">${esc(cl.nombre)}</div>
     <div class="sm" style="font-size:9.5px">${esc([cl.direccion,cl.telefono].filter(Boolean).join(" · "))}</div>
   </div>
-  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2026» (Diabetes Care. 2026;49(Suppl.1):S339–S355); Umpierrez GE et al., ensayo RABBIT 2 Surgery sobre esquema basal-bolo vs. escala móvil en cirugía general (Diabetes Care. 2011;34:256–261); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022); Kang DY et al., ensayo ASSURE-DES sobre aspirina en portadores de stent (J Am Coll Cardiol. 2024;84:2380–2389); y guías de manejo antitrombótico en cirugía oftalmológica (American Academy of Ophthalmology / CHEST 2022). Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
+  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2026» (Diabetes Care. 2026;49(Suppl.1):S339–S355); Umpierrez GE et al., ensayo RABBIT 2 Surgery sobre esquema basal-bolo vs. escala móvil en cirugía general (Diabetes Care. 2011;34:256–261); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022); Kang DY et al., ensayo ASSURE-DES sobre aspirina en portadores de stent (J Am Coll Cardiol. 2024;84:2380–2389); guías de manejo antitrombótico en cirugía oftalmológica (American Academy of Ophthalmology / CHEST 2022); y para arritmias, «2023 ACC/AHA/ACCP/HRS Guideline for the Diagnosis and Management of Atrial Fibrillation» (Circulation. 2024;149:e1–e156) y el capítulo de arritmias y dispositivos de la guía perioperatoria AHA/ACC 2024. Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
   </div>`;
 
   document.getElementById("note").innerHTML=note;
