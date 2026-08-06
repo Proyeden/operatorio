@@ -638,6 +638,12 @@
     <div class="card"><h2>Secciones de la nota</h2><div class="card-body">
       <div class="rec-tip">Active solo las secciones aplicables a este paciente. Se desactivan solas las que no correspondan (p. ej. diabetes o antitrombóticos si no hay datos).</div>
       <div id="secToggles"></div>
+      <div id="profOptions" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+        <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:6px">Esquema de profilaxis antibiótica</div>
+        <div class="field"><label>Esquema a utilizar (según cirugía)</label>
+          <select id="prof_esquema" onchange="render()"></select></div>
+        <div class="hint">El esquema elegido se resalta en la nota; las demás opciones aparecen como alternativas de referencia.</div>
+      </div>
       <div id="dmOptions" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
         <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:6px">Opciones de diabetes</div>
         <div class="grid2">
@@ -836,24 +842,67 @@ const REL = {
 // tipos que auto-marcan cirugía de alto riesgo RCRI (intraperitoneal/intratorácica/vascular)
 const HIRISK = new Set(["Vesícula (lap)","Ginecológica","Urológica (RTU)","Abdominal mayor","Vascular mayor","Bariátrica"]);
 
+// Cada cirugía: lista de esquemas {n: nombre/etiqueta, t: texto del antibiótico}. El primero es el preseleccionado.
 const PROF = {
-"Oftalmológica":["Colirio de moxifloxacino o gatifloxacino (o neomicina-gentamicina-polimixina B): 1 gota c/5–15 min × 5 dosis.","Opcional: cefazolina 100 mg subconjuntival al cierre."],
-"Dermatológica/plástica menor":["Cirugía limpia: generalmente NO requiere profilaxis sistémica.","Si se indica: cefazolina 1–2 g IV dosis única."],
-"Endoscopía con sedación":["CPRE sin obstrucción: no requiere. Con obstrucción biliar: ciprofloxacino 500–750 mg VO (o 400 mg IV) o piperacilina/tazobactam 4,5 g IV.","El máximo beneficio cuando no es posible drenaje completo."],
-"Mama":["Cefazolina 1–2 g IV dosis única.","Alternativas: AMP/SB 3 g IV, clindamicina 900 mg IV o vancomicina 1 g IV (1,5 g si >90 kg)."],
-"Hernia de pared":["Cefazolina 1–2 g IV dosis única.","Alergia β-lactámicos: clindamicina 900 mg IV o vancomicina 1 g IV."],
-"Vesícula (lap)":["Laparoscópica de bajo riesgo: NO requiere profilaxis.","Alto riesgo (>70 a, colecistitis aguda, ictericia obstructiva, litiasis) o abierta: cefazolina, cefoxitina o cefotetán 1–2 g IV. Colangitis: tratar como infección."],
-"Ginecológica":["Histerectomía: cefazolina 1–2 g, cefoxitina 1–2 g, cefotetán 1–2 g o AMP/SB 3 g IV, 30 min antes.","Alternativa: (clindamicina 900 mg o vancomicina 1 g) + (gentamicina 5 mg/kg o aztreonam 2 g), o metronidazol 500 mg + ciprofloxacino 400 mg IV."],
-"Urológica (RTU)":["RTU de próstata / cistoscopia con manipulación: ciprofloxacino 500 mg VO.","Ajustar a resistencia local. Tratar IU antes del procedimiento. Biopsia prostática transrectal: CIP 500 mg VO 12 h antes y repetir 12 h después."],
-"Cabeza y cuello/tiroides":["Cirugía limpia (tiroides): NO requiere. Con mucosa oral/faríngea: cefazolina 2 g IV ± metronidazol 500 mg.","Alternativa: clindamicina 600–900 mg IV ± gentamicina."],
-"Ortopedia menor":["Reducción abierta de fractura cerrada con fijación interna: ceftriaxona 2 g IV dosis única.","Con material protésico: cefazolina 1–2 g IV o vancomicina 1 g IV (1,5 g si >90 kg)."],
-"Columna":["Artrodesis de columna: cefazolina 1–2 g IV (3 g si >120 kg) dosis única.","Alternativa: vancomicina 1 g IV (1,5 g si >90 kg) o clindamicina 900 mg IV. Suspender dentro de 24 h."],
-"Trauma mayor":["Según sitio. Fractura cerrada con fijación interna: ceftriaxona 2 g IV.","Fractura abierta: tratar como contaminada. Reevaluar según lesiones."],
-"Artroplastia cadera/rodilla":["Cadera: cefazolina 1–2 g IV (3 g si >120 kg). Rodilla/otra: cefazolina 1–2 g IV o vancomicina 1 g IV.",">90 kg: vancomicina 1,5 g o clindamicina 900 mg. Mupirocina intranasal si S. aureus."],
-"Abdominal mayor":["Colorrectal: cefazolina 1–2 g + metronidazol 0,5 g IV; o cefoxitina/cefotetán; o ceftriaxona 2 g + metronidazol; o ertapenem 1 g IV.","Considerar preparación intestinal + antibiótico oral. Gastroduodenal: cefazolina/cefoxitina/cefotetán 1–2 g o ceftriaxona 2 g IV."],
-"Vascular mayor":["Aneurisma/revascularización: cefazolina 2 g IV. Aórtica o con prótesis: cefazolina 1–2 g (3 g si >120 kg) IV.","Alto riesgo/SARM: vancomicina 1 g IV. Mupirocina intranasal si S. aureus."],
-"Bariátrica":["Cefazolina 2 g IV (3 g si >120 kg) dosis única; redosificar en cirugía prolongada.","Dosis ajustada por obesidad. Prioridad de profilaxis de TVP y evaluación de SAOS."],
-"Otra/General":["Cefazolina 1–2 g IV 30–60 min antes de la incisión (2 g si >80 kg; 3 g si >120 kg).","Redosificar si >4 h o sangrado significativo. Alergia: clindamicina 900 mg o vancomicina 1 g IV."],
+"Oftalmológica":[
+  {n:"1.ª línea",t:"Colirio de moxifloxacino o gatifloxacino: 1 gota c/5–15 min × 5 dosis."},
+  {n:"Alternativa",t:"Colirio de neomicina-gentamicina-polimixina B: 1 gota c/5–15 min × 5 dosis."},
+  {n:"Opcional al cierre",t:"Cefazolina 100 mg subconjuntival al final de la intervención."}],
+"Dermatológica/plástica menor":[
+  {n:"Cirugía limpia",t:"Generalmente NO requiere profilaxis sistémica."},
+  {n:"Si se indica",t:"Cefazolina 1–2 g IV dosis única."}],
+"Endoscopía con sedación":[
+  {n:"CPRE sin obstrucción",t:"No requiere profilaxis."},
+  {n:"CPRE con obstrucción biliar",t:"Ciprofloxacino 500–750 mg VO (o 400 mg IV) o piperacilina/tazobactam 4,5 g IV."}],
+"Mama":[
+  {n:"1.ª línea",t:"Cefazolina 1–2 g IV dosis única."},
+  {n:"Alternativa",t:"AMP/SB 3 g IV dosis única."},
+  {n:"Alergia β-lactámicos",t:"Clindamicina 900 mg IV o vancomicina 1 g IV (1,5 g si >90 kg) dosis única."}],
+"Hernia de pared":[
+  {n:"1.ª línea",t:"Cefazolina 1–2 g IV dosis única."},
+  {n:"Alergia β-lactámicos",t:"Clindamicina 900 mg IV o vancomicina 1 g IV dosis única."}],
+"Vesícula (lap)":[
+  {n:"Bajo riesgo (laparoscópica)",t:"NO requiere profilaxis."},
+  {n:"Alto riesgo o abierta",t:"Cefazolina, cefoxitina o cefotetán 1–2 g IV. (Alto riesgo: >70 a, colecistitis aguda, ictericia obstructiva, litiasis)."},
+  {n:"Colangitis",t:"Tratar como infección establecida, no como profilaxis."}],
+"Ginecológica":[
+  {n:"1.ª línea (histerectomía)",t:"Cefazolina 1–2 g, cefoxitina 1–2 g, cefotetán 1–2 g o AMP/SB 3 g IV, 30 min antes."},
+  {n:"Alternativa",t:"(Clindamicina 900 mg o vancomicina 1 g IV) + (gentamicina 5 mg/kg o aztreonam 2 g IV)."},
+  {n:"Alergia β-lactámicos",t:"Metronidazol 500 mg IV + ciprofloxacino 400 mg IV."}],
+"Urológica (RTU)":[
+  {n:"1.ª línea (RTU / cistoscopia con manipulación)",t:"Ciprofloxacino 500 mg VO dosis única."},
+  {n:"Alternativa (baja resistencia local)",t:"TMP/SMX Forte 1 comprimido VO dosis única."},
+  {n:"Biopsia prostática transrectal",t:"CIP 500 mg VO 12 h antes y repetir 12 h después; la fosfomicina trometamol mostró mayor eficacia que las fluoroquinolonas en metaanálisis."},
+  {n:"Cistoscopia sin manipulación (orina estéril)",t:"Generalmente NO requiere profilaxis."}],
+"Cabeza y cuello/tiroides":[
+  {n:"Cirugía limpia (tiroides)",t:"NO requiere profilaxis antibiótica."},
+  {n:"Con mucosa oral/faríngea",t:"Cefazolina 2 g IV ± metronidazol 500 mg IV dosis única."},
+  {n:"Alternativa",t:"Clindamicina 600–900 mg IV ± gentamicina 5 mg/kg IV."}],
+"Ortopedia menor":[
+  {n:"Fractura cerrada con fijación interna",t:"Ceftriaxona 2 g IV dosis única."},
+  {n:"Con material protésico",t:"Cefazolina 1–2 g IV o vancomicina 1 g IV (1,5 g si >90 kg)."}],
+"Columna":[
+  {n:"1.ª línea (artrodesis)",t:"Cefazolina 1–2 g IV (3 g si >120 kg) dosis única."},
+  {n:"Alternativa / alergia",t:"Vancomicina 1 g IV (1,5 g si >90 kg) o clindamicina 900 mg IV. Suspender dentro de 24 h."}],
+"Trauma mayor":[
+  {n:"Fractura cerrada con fijación interna",t:"Ceftriaxona 2 g IV dosis única."},
+  {n:"Fractura abierta",t:"Tratar como herida contaminada; reevaluar según lesiones."}],
+"Artroplastia cadera/rodilla":[
+  {n:"1.ª línea",t:"Cefazolina 1–2 g IV (3 g si >120 kg) dosis única."},
+  {n:"Alternativa / >90 kg",t:"Vancomicina 1,5 g o clindamicina 900 mg IV. Mupirocina intranasal si colonización por S. aureus."}],
+"Abdominal mayor":[
+  {n:"1.ª línea (colorrectal)",t:"Cefazolina 1–2 g + metronidazol 0,5 g IV."},
+  {n:"Alternativa (colorrectal)",t:"Cefoxitina o cefotetán 1–2 g IV; o ceftriaxona 2 g + metronidazol; o ertapenem 1 g IV. Considerar preparación intestinal + antibiótico oral."},
+  {n:"Gastroduodenal",t:"Cefazolina, cefoxitina o cefotetán 1–2 g o ceftriaxona 2 g IV."},
+  {n:"Alergia β-lactámicos",t:"Clindamicina 900 mg IV + (gentamicina 5 mg/kg o aztreonam 2 g IV o ciprofloxacino 400 mg IV)."}],
+"Vascular mayor":[
+  {n:"1.ª línea",t:"Cefazolina 2 g IV (1–2 g; 3 g si >120 kg para aórtica o con prótesis)."},
+  {n:"Alto riesgo / SARM",t:"Vancomicina 1 g IV. Mupirocina intranasal si colonización por S. aureus."}],
+"Bariátrica":[
+  {n:"1.ª línea",t:"Cefazolina 2 g IV (3 g si >120 kg) dosis única; redosificar en cirugía prolongada."}],
+"Otra/General":[
+  {n:"1.ª línea",t:"Cefazolina 1–2 g IV 30–60 min antes de la incisión (2 g si >80 kg; 3 g si >120 kg)."},
+  {n:"Alergia β-lactámicos",t:"Clindamicina 900 mg o vancomicina 1 g IV. Redosificar si >4 h o sangrado significativo."}],
 };
 
 /* -------- Score definitions -------- */
@@ -969,7 +1018,7 @@ const REC_BANK=[
 ["Interconsulta a cardiología.","pre"],
 ["Interconsulta a neumología.","pre"],
 ["Reservar hemoderivados / pruebas cruzadas según sangrado esperado.","pre"],
-["Profilaxis antibiótica con cefazolina 2 g IV 30 min antes de incisión; repetir si cirugía > 4 h.","pre"],
+["Administrar profilaxis antibiótica según el tipo de cirugía (ver sección de profilaxis) 30–60 min antes de la incisión; redosificar si la cirugía se prolonga (> 4 h) o hay sangrado significativo.","pre"],
 ["Manejo en equipo multidisciplinario (cirugía, anestesia, cardiología).","pre"],
 ["Planificar cama de cuidados intermedios / UCI postoperatoria.","pre"],
 
@@ -1456,6 +1505,19 @@ function planDiabetes(){
   return P;
 }
 // Líneas de diabetes como lista plana (para selección línea por línea)
+function actualizarSelectorProfilaxis(){
+  const sel=document.getElementById("prof_esquema");
+  const box=document.getElementById("profOptions");
+  if(!sel||!box)return;
+  const tipo=val("tipo");
+  box.style.display=(tipo && secOn("profx"))?"block":"none";
+  if(!tipo){sel.innerHTML="";return;}
+  const p=PROF[tipo]||PROF["Otra/General"];
+  // recordar la selección actual si sigue siendo válida
+  const prev=parseInt(sel.value);
+  sel.innerHTML=p.map((o,i)=>`<option value="${i}">${o.n}</option>`).join("");
+  if(!isNaN(prev)&&prev<p.length)sel.value=prev; else sel.value="0";
+}
 /* ================= ARRITMIAS / TRASTORNOS DEL RITMO ================= */
 // AHA/ACC 2024 perioperatorio; FA: ACC/AHA/ACCP/HRS 2023. Enfoque: conducta + a quién referir / qué estudiar.
 function hayArritmia(){
@@ -1742,6 +1804,8 @@ function calc(){
   if(dmOpt)dmOpt.style.display=(tieneDiabetes()&&secOn("diabetes"))?"block":"none";
   const ciedBox=document.getElementById("arr_cied_box");
   if(ciedBox)ciedBox.style.display=chk("arr_cied")?"block":"none";
+  // Selector de esquema de profilaxis según el tipo de cirugía
+  actualizarSelectorProfilaxis();
   const dmt=document.getElementById("dm_tfg_disp");
   if(dmt){const t=tfgCKDEPI();dmt.value=(t!==null)?t+" ml/min":"— (falta creatinina/edad/sexo)";}
   render();
@@ -1795,6 +1859,14 @@ function suggestions(){
   const itq=indiceTabaquico();
   if(itq!==null&&itq>=10)out.push([`Índice tabáquico ${itq.toFixed(1)} paquetes-año: recomendar cese del tabaco al menos 4 semanas antes de la cirugía.`,"pre"]);
   const r=rt24();if(r!==null)out.push([`Terapia hídrica basal: ${Math.round(r)} ml/24h (Holliday-Segar). Ajustar a pérdidas quirúrgicas y estado clínico.`,"trans"]);
+  // Profilaxis antibiótica concordante con el esquema ELEGIDO en la sección de profilaxis
+  const tipoProf=val("tipo");
+  if(tipoProf){
+    const p=PROF[tipoProf]||PROF["Otra/General"];
+    const idx=Math.min(parseInt(val("prof_esquema"))||0, p.length-1);
+    const eleg=p[idx]||p[0];
+    if(eleg)out.push([`Profilaxis antibiótica (${eleg.n}): ${eleg.t}`,"pre"]);
+  }
   return out;
 }
 
@@ -1892,6 +1964,8 @@ function render(){
   // ---- build note ----
   const tipo=val("tipo");
   const prof=PROF[tipo]||PROF["Otra/General"];
+  const profIdx=Math.min(parseInt(val("prof_esquema"))||0, prof.length-1);
+  const profElegido=prof[profIdx]||prof[0];
   // ---- Algoritmo escalonado AHA/ACC 2024 ----
   const rcriT=scoreTotal("RCRI"), aubT=scoreTotal("AUB-HAS2");
   // Riesgo elevado = RCRI >1 (≥2) o riesgo quirúrgico alto o AUB-HAS2 ≥2 (≥1% MACE)
@@ -2017,8 +2091,8 @@ function render(){
   <div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
   ${secOn("profx")?`<h2>Profilaxis antibiótica sugerida</h2>
-  <table><tr><td class="lab">Elección</td><td>${esc(prof[0])}</td></tr>
-  <tr><td class="lab">Alternativa / notas</td><td style="color:#5b6b7a">${esc(prof[1])}</td></tr></table>
+  <table><tr><td class="lab">Esquema elegido</td><td><b>${esc(profElegido.n)}:</b> ${esc(profElegido.t)}</td></tr>
+  ${prof.length>1?`<tr><td class="lab">Alternativas</td><td style="color:#5b6b7a">${prof.filter((o,i)=>i!==profIdx).map(o=>`<b>${esc(o.n)}:</b> ${esc(o.t)}`).join("<br>")}</td></tr>`:""}</table>
   <div class="muted" style="margin-top:4px">Administrar 30-60 min antes de la incisión. Redosificar si la cirugía se prolonga (&gt;3-4 h) o hay pérdida hemática significativa.</div>`:""}
 
   ${(function(){if(!secOn("tromboprofx"))return "";const tp=filtLines("tromboprofx",planTromboprofilaxis());if(!tp.length)return "";
