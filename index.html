@@ -183,6 +183,16 @@
   .dm-flag{margin-top:10px;padding:10px 12px;background:#eef6f6;border:1px solid #cfe3e3;border-radius:8px}
   .dm-flag-check{display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12.5px;line-height:1.45}
   .dm-flag-check input{accent-color:var(--primary);width:17px;height:17px;margin-top:1px;flex:0 0 auto}
+  /* acordeón evaluación por sistemas */
+  .sysacc{border:1px solid var(--line);border-radius:7px;margin-bottom:6px;overflow:hidden}
+  .sysacc-head{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;
+       font-size:12.5px;font-weight:600;color:var(--navy);background:#f6fafb;user-select:none}
+  .sysacc-head:hover{background:var(--teal-soft)}
+  .sysacc-car{font-size:11px;color:var(--primary);width:12px;flex:0 0 auto;transition:transform .15s}
+  .sysacc-dot{width:8px;height:8px;border-radius:50%;background:transparent;margin-left:auto;flex:0 0 auto}
+  .sysacc.active .sysacc-dot{background:#2e9e5b}
+  .sysacc.active .sysacc-head{color:var(--primary-dark)}
+  .sysacc-body{padding:8px 11px 10px}
   /* secciones expandibles */
   .sec-row{border-bottom:1px solid #eef2f4}
   .sec-head{display:flex;align-items:center;gap:6px;padding:6px 4px}
@@ -322,7 +332,7 @@
     .note-hd{padding:16px 22px 14px;border-bottom:4px solid #e8873c!important;
          background:#0e6b73!important;color:#fff!important}
     .note-hd .kicker,.note-hd h1,.note-hd .sub{color:#fff!important}
-    .note-body{padding:0 22px}
+    .note-body{padding:0 16mm}
     .note h2{margin:16px 0 7px;background:#e6f3f3!important;border-left:4px solid #0e7c85!important;
          color:#0a5157!important;
          break-after:avoid!important;page-break-after:avoid!important;break-inside:avoid!important}
@@ -345,7 +355,9 @@
     .r-bajo{background:#e3f2e8!important}.r-medio{background:#fdf1dc!important}
     .r-alto{background:#fbe4e0!important}.r-na{background:#eef1f4!important}
     .note .rec-block-hd{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-    @page{margin:12mm}
+    .note{padding-bottom:14mm!important}
+    /* margen de página 0 → el navegador deja de imprimir su encabezado/pie (URL, fecha, título) */
+    @page{margin:0}
   }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -415,7 +427,7 @@
       <div class="field"><label>Nombre completo</label><input id="nombre" oninput="render()"></div>
       <div class="grid2">
         <div class="field"><label>Edad (años)</label><input type="number" id="edad" min="0" oninput="calc()"></div>
-        <div class="field"><label>Sexo</label><select id="sexo" onchange="calc()"><option value=""></option><option>Femenino</option><option>Masculino</option></select></div>
+        <div class="field"><label>Sexo</label><select id="sexo" onchange="efRefrescarGenero();calc()"><option value=""></option><option>Femenino</option><option>Masculino</option></select></div>
       </div>
       <div class="grid2">
         <div class="field"><label>Estado civil</label><input id="civil" oninput="render()"></div>
@@ -526,6 +538,9 @@
           <div class="field"><label>Glucosa (mg/dl)</label><input id="l_glu" oninput="render()"></div>
           <div class="field"><label>Sodio (mEq/l)</label><input id="l_na" oninput="render()"></div>
           <div class="field"><label>Potasio (mEq/l)</label><input id="l_k" oninput="render()"></div>
+          <div class="field"><label>Albúmina (g/dl)</label><input id="l_alb" oninput="calc()"></div>
+          <div class="field"><label>Bilirrubina total (mg/dl)</label><input id="l_bili" oninput="calc()"></div>
+          <div class="field"><label>TFG (CKD-EPI, auto)</label><input id="l_tfg_disp" readonly style="background:#eef6f6;font-weight:700"></div>
         </div>
       </div>
       <div class="grid3" style="margin-top:6px">
@@ -645,6 +660,123 @@
       <label class="check"><input type="checkbox" id="arr_sintomas" onchange="calc()"><span>Síntomas de arritmia intermitente (palpitaciones, presíncope, síncope) con EKG normal</span></label>
       <label class="check"><input type="checkbox" id="arr_estructural" onchange="calc()"><span>Sospecha de cardiopatía estructural (disnea no explicada, ICC nueva/que empeora, soplo no estudiado)</span></label>
       <label class="check"><input type="checkbox" id="arr_resuelta" onchange="calc()"><span>Antecedente de arritmia <b>resuelta</b>, sin tratamiento actual, EKG normal y asintomático</span></label>
+    </div></div>
+
+    <div class="card"><h2>Riesgo quirúrgico ACS-NSQIP</h2><div class="card-body">
+      <div class="hint" style="margin-bottom:8px">La calculadora ACS-NSQIP es externa (modelo propietario). Ábrala, obtenga los porcentajes del paciente y cópielos aquí; se mostrarán con el formato del informe. Deje en blanco lo que no aplique.</div>
+      <a href="https://riskcalculator.facs.org" target="_blank" rel="noopener" class="btn btn-ghost dark" style="display:inline-flex;margin-bottom:10px">↗ Abrir calculadora ACS-NSQIP</a>
+      <div class="field"><label>Opción A — Subir el PDF de ACS-NSQIP (lo lee solo)</label>
+        <input type="file" id="acs_pdf" accept="application/pdf,.pdf" onchange="importarACSpdf(event)" style="font-size:12px">
+        <div class="hint">Descargue el resumen en PDF desde la calculadora y súbalo aquí; se extraen los valores automáticamente.</div>
+      </div>
+      <div class="field" style="margin-top:6px"><label>Opción B — Pegar el texto del resultado</label>
+        <textarea id="acs_paste" rows="3" placeholder="En la página de resultados de ACS, seleccione todo (Ctrl+A), copie (Ctrl+C) y pegue aquí; luego toque «Importar»." style="font-size:12px"></textarea></div>
+      <button type="button" class="btn-mini" style="margin:0 0 10px" onclick="importarACS()">⇩ Importar texto pegado</button>
+      <div class="grid3">
+        <div class="field"><label>Complicación seria (%)</label><input id="acs_seria" oninput="calc()"></div>
+        <div class="field"><label>Cualquier complicación (%)</label><input id="acs_any" oninput="calc()"></div>
+        <div class="field"><label>Mortalidad (%)</label><input id="acs_death" oninput="calc()"></div>
+        <div class="field"><label>Complicación cardíaca (%)</label><input id="acs_card" oninput="calc()"></div>
+        <div class="field"><label>Neumonía (%)</label><input id="acs_neumo" oninput="calc()"></div>
+        <div class="field"><label>ITU (%)</label><input id="acs_itu" oninput="calc()"></div>
+        <div class="field"><label>Tromboembolismo venoso (%)</label><input id="acs_tev" oninput="calc()"></div>
+        <div class="field"><label>Falla renal (%)</label><input id="acs_renal" oninput="calc()"></div>
+        <div class="field"><label>Infección sitio quirúrgico (%)</label><input id="acs_isq" oninput="calc()"></div>
+        <div class="field"><label>Reingreso (%)</label><input id="acs_reing" oninput="calc()"></div>
+        <div class="field"><label>Reintervención (%)</label><input id="acs_reint" oninput="calc()"></div>
+        <div class="field"><label>Egreso a centro de cuidados (%)</label><input id="acs_egreso" oninput="calc()"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Estancia prevista (días)</label><input id="acs_estancia" oninput="calc()"></div>
+        <div class="field"><label>Riesgo global (texto libre: bajo/promedio/alto)</label><input id="acs_global" oninput="calc()"></div>
+      </div>
+    </div></div>
+
+    <div class="card"><h2>Evaluación por sistemas</h2><div class="card-body">
+      <div class="hint" style="margin-bottom:8px">Comorbilidades: toque cada apartado para abrirlo. El punto verde indica que tiene datos marcados. Cada módulo genera conducta, qué pedir y a quién referir.</div>
+
+      <div class="sysacc" data-sys="renal">
+        <div class="sysacc-head" onclick="toggleSysAcc('renal')"><span class="sysacc-car">▸</span> Renal / hidroelectrolítico <span class="sysacc-dot"></span></div>
+        <div class="sysacc-body" id="sysacc_renal" style="display:none">
+          <label class="check"><input type="checkbox" id="flag_renal" onchange="calc()"><span>Enfermedad renal crónica / alteración de pruebas renales</span></label>
+          <label class="check"><input type="checkbox" id="rn_dialisis" onchange="calc()"><span>En diálisis (hemodiálisis / peritoneal)</span></label>
+        </div>
+      </div>
+
+      <div class="sysacc" data-sys="pulmonar">
+        <div class="sysacc-head" onclick="toggleSysAcc('pulmonar')"><span class="sysacc-car">▸</span> Neumopatía <span class="sysacc-dot"></span></div>
+        <div class="sysacc-body" id="sysacc_pulmonar" style="display:none">
+          <label class="check"><input type="checkbox" id="pul_epoc" onchange="calc()"><span>EPOC / enfisema</span></label>
+          <label class="check"><input type="checkbox" id="pul_asma" onchange="calc()"><span>Asma</span></label>
+          <label class="check"><input type="checkbox" id="pul_infec" onchange="calc()"><span>Infección respiratoria en el último mes</span></label>
+          <label class="check"><input type="checkbox" id="pul_otra" onchange="calc()"><span>Otra neumopatía (EPID, bronquiectasias, hipertensión pulmonar)</span></label>
+        </div>
+      </div>
+
+      <div class="sysacc" data-sys="urinario">
+        <div class="sysacc-head" onclick="toggleSysAcc('urinario')"><span class="sysacc-car">▸</span> Vías urinarias <span class="sysacc-dot"></span></div>
+        <div class="sysacc-body" id="sysacc_urinario" style="display:none">
+          <label class="check"><input type="checkbox" id="itu_sintomas" onchange="calc()"><span>Síntomas urinarios (disuria, fiebre, polaquiuria) — ITU sintomática</span></label>
+          <label class="check"><input type="checkbox" id="itu_asintom" onchange="calc()"><span>Urocultivo/EGO alterado SIN síntomas (bacteriuria asintomática)</span></label>
+        </div>
+      </div>
+
+      <div class="sysacc" data-sys="hepato">
+        <div class="sysacc-head" onclick="toggleSysAcc('hepato')"><span class="sysacc-car">▸</span> Hepatopatía <span class="sysacc-dot"></span></div>
+        <div class="sysacc-body" id="sysacc_hepato" style="display:none">
+          <label class="check"><input type="checkbox" id="flag_hepato" onchange="calc()"><span>Hepatopatía crónica / cirrosis</span></label>
+          <div id="hepato_box" style="display:none;margin:6px 0 0 24px;padding-left:10px;border-left:2px solid var(--line)">
+            <div class="hint" style="margin-bottom:4px">MELD/Child-Pugh usan: bilirrubina, INR, creatinina, albúmina, sodio (ingréselos en Estudios).</div>
+            <div class="grid2">
+              <div class="field"><label>Ascitis</label><select id="hp_ascitis" onchange="calc()">
+                <option value="0">Ausente</option><option value="1">Leve / controlada</option><option value="2">Moderada-tensa / refractaria</option></select></div>
+              <div class="field"><label>Encefalopatía</label><select id="hp_encef" onchange="calc()">
+                <option value="0">Ausente</option><option value="1">Grado I-II (controlada)</option><option value="2">Grado III-IV</option></select></div>
+            </div>
+            <label class="check"><input type="checkbox" id="hp_hepatitis" onchange="calc()"><span>Sospecha de hepatitis aguda (transaminasas &gt; 3× normal)</span></label>
+            <div id="hepato_scores" class="score-interp" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sysacc" data-sys="medic">
+        <div class="sysacc-head" onclick="toggleSysAcc('medic')"><span class="sysacc-car">▸</span> Medicamentos de manejo especial <span class="sysacc-dot"></span></div>
+        <div class="sysacc-body" id="sysacc_medic" style="display:none">
+          <label class="check"><input type="checkbox" id="flag_esteroides" onchange="calc()"><span>Uso crónico de glucocorticoides (prednisona &gt;5 mg/día &gt;2-3 sem en el último año)</span></label>
+          <label class="check"><input type="checkbox" id="flag_horm" onchange="calc()"><span>Estrógenos / anticonceptivos orales / terapia hormonal</span></label>
+          <label class="check"><input type="checkbox" id="flag_inmuno" onchange="calc()"><span>Inmunosupresores / biológicos (metotrexato, anti-TNF, etc.)</span></label>
+          <label class="check"><input type="checkbox" id="flag_herbal" onchange="calc()"><span>Suplementos herbales (ginkgo, ajo, ginseng, etc.)</span></label>
+          <label class="check"><input type="checkbox" id="flag_litio" onchange="calc()"><span>Litio o IMAO</span></label>
+        </div>
+      </div>
+
+      <div class="sysacc" data-sys="endocrino">
+        <div class="sysacc-head" onclick="toggleSysAcc('endocrino')"><span class="sysacc-car">▸</span> Endocrino / otros <span class="sysacc-dot"></span></div>
+        <div class="sysacc-body" id="sysacc_endocrino" style="display:none">
+          <label class="check"><input type="checkbox" id="flag_tiroides" onchange="calc()"><span>Disfunción tiroidea</span></label>
+          <div id="tiroides_box" style="display:none;margin:4px 0 0 24px;padding-left:10px;border-left:2px solid var(--line)">
+            <div class="field"><label>Estado tiroideo</label><select id="tiroides_est" onchange="calc()">
+              <option>Controlada</option><option>Hipotiroidismo no controlado</option><option>Hipertiroidismo no controlado</option></select></div>
+          </div>
+          <label class="check"><input type="checkbox" id="flag_delirium" onchange="calc()"><span>Deterioro cognitivo / alto riesgo de delirium (se activa solo en adulto mayor frágil)</span></label>
+        </div>
+      </div>
+
+      <div class="sysacc" data-sys="alcohol">
+        <div class="sysacc-head" onclick="toggleSysAcc('alcohol')"><span class="sysacc-car">▸</span> Consumo de alcohol (AUDIT-C) <span class="sysacc-dot"></span></div>
+        <div class="sysacc-body" id="sysacc_alcohol" style="display:none">
+          <label class="check"><input type="checkbox" id="flag_audit" onchange="calc()"><span>Evaluar consumo de alcohol</span></label>
+          <div id="audit_box" style="display:none;margin:6px 0 0 24px;padding-left:10px;border-left:2px solid var(--line)">
+            <div class="field"><label>¿Con qué frecuencia toma bebidas alcohólicas?</label><select id="au_1" onchange="calc()">
+              <option value="0">Nunca</option><option value="1">1 vez/mes o menos</option><option value="2">2-4 veces/mes</option><option value="3">2-3 veces/semana</option><option value="4">4+ veces/semana</option></select></div>
+            <div class="field"><label>¿Cuántas bebidas toma en un día típico que bebe?</label><select id="au_2" onchange="calc()">
+              <option value="0">1-2</option><option value="1">3-4</option><option value="2">5-6</option><option value="3">7-9</option><option value="4">10+</option></select></div>
+            <div class="field"><label>¿Con qué frecuencia toma 6+ bebidas en una ocasión?</label><select id="au_3" onchange="calc()">
+              <option value="0">Nunca</option><option value="1">Menos de 1 vez/mes</option><option value="2">Mensual</option><option value="3">Semanal</option><option value="4">A diario o casi</option></select></div>
+            <div id="audit_result" class="score-interp" style="margin-top:6px"></div>
+          </div>
+        </div>
+      </div>
     </div></div>
 
     <div class="card"><h2>Secciones de la nota</h2><div class="card-body">
@@ -1349,11 +1481,17 @@ const EF_NORMAL={
   ef_neuro:"Conservado. Glasgow 15/15, sin focalización, fuerza y sensibilidad conservadas.",
   ef_piel:"Sin lesiones, buena coloración e hidratación."
 };
+// Texto normal adaptado al sexo (solo "Estado general" tiene concordancia de género).
+function efNormalText(id){
+  if(id==="ef_gen" && val("sexo")==="Femenino")
+    return "Paciente luce en buenas condiciones generales, ambulatoria, consciente, orientada, hidratada, afebril.";
+  return EF_NORMAL[id]||"";
+}
 function efNormalUno(id){
   const el=document.getElementById(id);
   const cb=document.getElementById("efn_"+id);
   if(!el)return;
-  if(cb&&cb.checked){ el.value=EF_NORMAL[id]||""; el.dataset.autonormal="1"; }
+  if(cb&&cb.checked){ el.value=efNormalText(id); el.dataset.autonormal="1"; }
   else { if(el.dataset.autonormal==="1"){el.value="";} el.dataset.autonormal=""; }
   render();
 }
@@ -1362,7 +1500,7 @@ function efTodoNormal(){
     const cb=document.getElementById("efn_"+id);
     if(cb)cb.checked=true;
     const el=document.getElementById(id);
-    if(el){el.value=EF_NORMAL[id]; el.dataset.autonormal="1";}
+    if(el){el.value=efNormalText(id); el.dataset.autonormal="1";}
   });
   render();
 }
@@ -1379,10 +1517,43 @@ function efLimpiar(){
 function efManual(id){
   const el=document.getElementById(id);
   const cb=document.getElementById("efn_"+id);
-  if(el&&el.dataset.autonormal==="1"&&el.value!==EF_NORMAL[id]){
+  if(el&&el.dataset.autonormal==="1"&&el.value!==efNormalText(id)){
     el.dataset.autonormal=""; if(cb)cb.checked=false;
   }
   render();
+}
+// ---- Acordeón de "Evaluación por sistemas" ----
+const SYS_FLAGS={
+  renal:["flag_renal","rn_dialisis"],
+  pulmonar:["pul_epoc","pul_asma","pul_infec","pul_otra"],
+  urinario:["itu_sintomas","itu_asintom"],
+  hepato:["flag_hepato"],
+  medic:["flag_esteroides","flag_horm","flag_inmuno","flag_herbal","flag_litio"],
+  endocrino:["flag_tiroides","flag_delirium"],
+  alcohol:["flag_audit"],
+};
+function toggleSysAcc(sys){
+  const body=document.getElementById("sysacc_"+sys);
+  const row=document.querySelector('.sysacc[data-sys="'+sys+'"]');
+  if(!body)return;
+  const open=body.style.display==="none";
+  body.style.display=open?"block":"none";
+  if(row){const car=row.querySelector(".sysacc-car");if(car)car.textContent=open?"▾":"▸";}
+}
+function refreshSysAcc(){
+  Object.keys(SYS_FLAGS).forEach(sys=>{
+    const row=document.querySelector('.sysacc[data-sys="'+sys+'"]');
+    if(!row)return;
+    const activo=SYS_FLAGS[sys].some(id=>chk(id));
+    row.classList.toggle("active",activo);
+  });
+}
+// al cambiar el sexo, reescribe los campos autollenados para que concuerde el género
+function efRefrescarGenero(){
+  Object.keys(EF_NORMAL).forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && el.dataset.autonormal==="1") el.value=efNormalText(id);
+  });
 }
 
 /* ================= CLÍNICA / LOGO ================= */
@@ -1572,7 +1743,7 @@ function planDiabetes(){
   P.farmacos.push("Metformina: suspender el día de la cirugía (riesgo de acidosis láctica en hipoperfusión o uso de contraste); reiniciar al recuperar la vía oral y confirmar función renal.");
   P.farmacos.push("Inhibidores de SGLT2 (empagliflozina, dapagliflozina, canagliflozina): suspender 3-4 días antes por riesgo de cetoacidosis euglucémica perioperatoria.");
   P.farmacos.push("Sulfonilureas (glibenclamida, gliclazida) y meglitinidas: suspender la mañana de la cirugía por riesgo de hipoglucemia en ayuno (mayor si hay deterioro renal).");
-  P.farmacos.push("Agonistas GLP-1 (semaglutida, dulaglutida, liraglutida): retrasan el vaciamiento gástrico; valorar suspensión según esquema y riesgo de broncoaspiración (evidencia aún limitada).");
+  P.farmacos.push("Agonistas GLP-1 (semaglutida, tirzepatida, dulaglutida, liraglutida): guía multisociedad 2024 — la mayoría CONTINÚA el fármaco; en dosis altas o mayor riesgo de retraso del vaciamiento gástrico, indicar dieta líquida 24 h antes; DIFERIR solo si hay síntomas GI activos el día de la cirugía (náusea, vómito, distensión, dolor). Manejo anestésico con precaución de broncoaspiración.");
   P.farmacos.push("iDPP-4 (sitagliptina, linagliptina): pueden continuarse; bajo riesgo de hipoglucemia.");
 
   P.insulina.push("Insulina basal (glargina, detemir, degludec): administrar 75-80% de la dosis la noche previa y la mañana de la cirugía.");
@@ -1713,6 +1884,435 @@ function profilaxisLines(){
   if(!tipo)return [];
   const p=PROF[tipo]||PROF["Otra/General"];
   return p.map(o=>`${o.n}: ${o.t}`);
+}
+
+/* ================= RENAL / HIDROELECTROLÍTICO ================= */
+// KDIGO 2024; consenso ADQI/POQI de LRA postoperatoria.
+function estadioERC(tfg){
+  if(tfg===null)return null;
+  if(tfg>=90)return "G1 (≥90)"; if(tfg>=60)return "G2 (60-89)";
+  if(tfg>=45)return "G3a (45-59)"; if(tfg>=30)return "G3b (30-44)";
+  if(tfg>=15)return "G4 (15-29)"; return "G5 (<15)";
+}
+function hayRenal(){
+  if(chk("flag_renal")||chk("rn_dialisis"))return true;
+  const t=tfgCKDEPI(); if(t!==null && t<60)return true;
+  const cr=num("l_cr"); if(cr!==null && cr>1.3)return true;
+  const k=num("l_k"); if(k!==null && (k>5.3||k<3.3))return true;
+  return false;
+}
+function planRenal(){
+  if(!hayRenal())return null;
+  const tfg=tfgCKDEPI(), cr=num("l_cr"), k=num("l_k"), na=num("l_na"), dial=chk("rn_dialisis");
+  const P={general:[],conducta:[],electrolitos:[],referir:[]};
+  if(tfg!==null)P.general.push(`TFG estimada (CKD-EPI 2021): ${tfg} ml/min — estadio ${estadioERC(tfg)}. La TFG basal es el predictor más fuerte de lesión renal aguda postoperatoria.`);
+  else P.general.push("Estime la TFG (ingrese creatinina, edad y sexo). La TFG basal es el predictor más fuerte de lesión renal aguda postoperatoria.");
+
+  P.conducta.push("Nefroprotección hemodinámica: mantener PAM ≥ 65 mmHg intraoperatoria (más alta en hipertensos); evitar hipovolemia e hipervolemia (POQI-3).");
+  P.conducta.push("Evitar AINEs en el perioperatorio (riesgo de lesión renal, sobre todo en hipovolemia). Preferir analgesia multimodal no nefrotóxica.");
+  P.conducta.push("Contraste yodado: usar el menor volumen y agentes de baja osmolaridad; el riesgo renal por sí solo no contraindica un estudio verdaderamente necesario. Asegurar euvolemia.");
+  P.conducta.push("IECA/ARA-II: suspender su beneficio de continuarlos es incierto; es razonable omitir la dosis de la mañana y reiniciar dentro de 48 h si está estable y sin lesión renal (POQI-3).");
+  P.conducta.push("Ajustar antibióticos y fármacos de eliminación renal a la depuración. Meta de glucosa < 180 mg/dl. Transfusión con estrategia restrictiva.");
+  if(chk("rcri_dm")||chk("flag_dm")||tieneDiabetes())
+    P.conducta.push("Suspender inhibidores de SGLT2 3-4 días antes (cetoacidosis euglucémica; también reduce depleción de volumen).");
+
+  // Electrolitos
+  if(k!==null){
+    if(k>5.5)P.electrolitos.push(`Potasio ${k} mEq/L: hiperkalemia. Diferir cirugía electiva y tratar; el ECG manda sobre la cifra. Diálisis urgente solo si >6.5 refractario/en ascenso, con arritmia, o pH <7.2.`);
+    else if(k>5.0)P.electrolitos.push(`Potasio ${k} mEq/L: hiperkalemia leve (umbral de referencia 5.5). Con ECG normal y asintomático no contraindica cirugía; descartar pseudohiperkalemia y vigilar.`);
+    else if(k<3.3)P.electrolitos.push(`Potasio ${k} mEq/L: hipokalemia. Corregir antes de cirugía electiva (riesgo de arritmias); reponer también magnesio si está bajo.`);
+  }
+  if(na!==null){
+    if(na<130)P.electrolitos.push(`Sodio ${na} mEq/L: hiponatremia. Investigar causa y corregir con cautela si es significativa/sintomática antes de cirugía electiva.`);
+    else if(na>148)P.electrolitos.push(`Sodio ${na} mEq/L: hipernatremia. Corregir el déficit de agua libre antes de cirugía electiva.`);
+  }
+  P.electrolitos.push("Corregir alteraciones de calcio y magnesio significativas; el magnesio bajo perpetúa la hipokalemia e hipocalcemia.");
+
+  if(dial){
+    P.conducta.push("En diálisis: coordinar la sesión el día PREVIO (no el mismo día) por la heparina y los cambios de volumen/potasio. Pesar en seco de referencia.");
+    P.referir.push("Coordinar con nefrología la diálisis perioperatoria y el manejo del acceso vascular.");
+  }
+  if((tfg!==null&&tfg<30)||dial)
+    P.referir.push("Referir a nefrología (ERC G4-G5 o diálisis): optimización, manejo de anemia, acidosis y electrolitos; valorar nivel de cuidados postoperatorios.");
+  else if(tfg!==null&&tfg<45)
+    P.referir.push("Considerar valoración por nefrología en ERC G3b si hay comorbilidad o cirugía mayor.");
+  P.referir.push("Vigilancia de lesión renal aguda postoperatoria (creatinina y diuresis); considerar cuidados intermedios/UCI desde LRA estadio 2 (KDIGO).");
+  return P;
+}
+function renalLines(){const p=planRenal();if(!p)return [];return [...p.general,...p.conducta,...p.electrolitos,...p.referir];}
+
+/* ================= NEUMOPATÍA / PULMONAR ================= */
+// ACP 2006 (reducción de complicaciones pulmonares); ARISCAT; STOP-BANG.
+function hayPulmonar(){
+  return chk("pul_epoc")||chk("pul_asma")||chk("pul_infec")||chk("pul_otra")||
+         scoreTotal("ARISCAT")>=26 || scoreTotal("STOP-BANG")>=5;
+}
+function planPulmonar(){
+  if(!hayPulmonar())return null;
+  const ar=scoreTotal("ARISCAT"), sb=scoreTotal("STOP-BANG");
+  const P={general:[],conducta:[],estudios:[],referir:[]};
+  const nivelAr = ar>=45?"alto":ar>=26?"intermedio":"bajo";
+  P.general.push(`Riesgo de complicaciones pulmonares postoperatorias: ARISCAT ${ar} (${nivelAr}). Factores: edad, SpO₂ baja, infección respiratoria reciente, anemia, incisión abdominal alta/torácica, duración > 2-3 h, emergencia.`);
+
+  if(chk("pul_infec"))
+    P.general.push("⚠ Infección respiratoria en el último mes: diferir cirugía electiva hasta su resolución (factor de riesgo mayor de complicaciones).");
+  if(chk("pul_epoc")){
+    P.conducta.push("EPOC: llevar al paciente a su mejor estado basal — optimizar broncodilatadores, tratar exacerbación o infección activa antes de cirugía electiva. Continuar corticoides inhalados.");
+  }
+  if(chk("pul_asma"))
+    P.conducta.push("Asma: asegurar buen control (sin sibilancias, PEF basal); continuar controladores inhalados; considerar corticoide si no está controlada.");
+  if(chk("pul_otra"))
+    P.conducta.push("Neumopatía intersticial/bronquiectasias/hipertensión pulmonar: optimización dirigida y valoración especializada; la hipertensión pulmonar eleva marcadamente el riesgo anestésico.");
+
+  P.conducta.push("Estrategias que reducen complicaciones (ACP): expansión pulmonar (espirometría incentiva, respiración profunda), movilización temprana, ventilación protectora, analgesia que minimice opioides, descompresión nasogástrica solo selectiva.");
+  const itq=indiceTabaquico();
+  if(itq!==null&&itq>0)
+    P.conducta.push("Cese del tabaco idealmente ≥ 4 semanas antes (reduce complicaciones respiratorias y de herida).");
+  if(sb>=5)
+    P.conducta.push(`STOP-BANG ${sb} (alto riesgo de apnea del sueño): continuar CPAP, oximetría postoperatoria, precaución extrema con opioides y sedantes.`);
+  else if(sb>=3)
+    P.conducta.push(`STOP-BANG ${sb} (riesgo intermedio de apnea): vigilancia respiratoria postoperatoria.`);
+
+  P.estudios.push("Radiografía de tórax y espirometría NO son de rutina: pedirlas dirigidas (disnea no explicada, EPOC no caracterizada, u optimización antes de cirugía mayor).");
+  if(nivelAr==="alto")
+    P.estudios.push("ARISCAT alto: considerar gasometría arterial y valoración funcional respiratoria antes de cirugía mayor.");
+
+  if(chk("pul_epoc")||chk("pul_otra"))
+    P.referir.push("Referir a neumología: EPOC mal controlada, hipoxemia no estudiada, neumopatía intersticial o hipertensión pulmonar, antes de cirugía mayor electiva.");
+  if(sb>=5)
+    P.referir.push("Considerar estudio de sueño/neumología en apnea severa no tratada antes de cirugía mayor electiva.");
+  return P;
+}
+function pulmonarLines(){const p=planPulmonar();if(!p)return [];return [...p.general,...p.conducta,...p.estudios,...p.referir];}
+
+/* ================= VÍAS URINARIAS / ITU ================= */
+// IDSA 2019 (bacteriuria asintomática); AAO/Choosing Wisely (pruebas de rutina).
+function hayOrina(){ return chk("itu_sintomas")||chk("itu_asintom"); }
+function planOrina(){
+  if(!hayOrina())return null;
+  const tipo=val("tipo"), uro=(tipo==="Urológica (RTU)");
+  const P={general:[],conducta:[],referir:[]};
+  if(chk("itu_sintomas")){
+    P.general.push("ITU sintomática (disuria, fiebre, polaquiuria): es una infección activa, fuente de bacteriemia perioperatoria.");
+    P.conducta.push("Tratar con antibiótico dirigido por urocultivo. En cirugía electiva es razonable DIFERIR hasta resolverla, sobre todo si hay implante protésico o el procedimiento es urológico.");
+  }
+  if(chk("itu_asintom")){
+    if(uro){
+      P.general.push("Bacteriuria asintomática + procedimiento endourológico (RTU): aquí SÍ se trata.");
+      P.conducta.push("Tratar con esquema dirigido 30-60 min antes del procedimiento (los procedimientos con trauma de mucosa son la excepción — IDSA 2019).");
+    } else {
+      P.general.push("Bacteriuria asintomática SIN síntomas en cirugía no urológica: NO está indicado tratarla (IDSA 2019). Tratarla no reduce infección del sitio quirúrgico ni de prótesis y favorece resistencia.");
+      P.conducta.push("No diferir la cirugía ni iniciar antibiótico por un urocultivo/EGO positivo en ausencia de síntomas. Proceder con la profilaxis quirúrgica habitual según el tipo de cirugía.");
+    }
+  }
+  // Nota sobre pruebas de rutina, muy relevante en cirugía de bajo riesgo
+  if(["Oftalmológica","Dermatológica/plástica menor"].includes(tipo))
+    P.general.push("Cirugía de bajo riesgo (p. ej. catarata): los exámenes preoperatorios de rutina —incluido el examen de orina— NO están indicados ni mejoran desenlaces (Schein NEJM 2000; AAO; Choosing Wisely). No diferir por un EGO de rutina en paciente asintomático.");
+  return P;
+}
+function orinaLines(){const p=planOrina();if(!p)return [];return [...p.general,...p.conducta,...p.referir];}
+
+/* ================= HEPATOPATÍA + MELD / CHILD-PUGH ================= */
+function meldScore(){
+  let bili=num("l_bili"), inr=num("l_inr"), cr=num("l_cr"), na=num("l_na");
+  if(bili===null||inr===null||cr===null)return null;
+  const dial=chk("rn_dialisis");
+  bili=Math.max(bili,1); inr=Math.max(inr,1);
+  cr=Math.max(cr,1); if(dial||cr>4)cr=4;
+  let meld = 3.78*Math.log(bili) + 11.2*Math.log(inr) + 9.57*Math.log(cr) + 6.43;
+  meld=Math.round(meld);
+  let meldNa=null;
+  if(na!==null){
+    let n=Math.min(Math.max(na,125),137);
+    meldNa = Math.round(meld + 1.32*(137-n) - (0.033*meld*(137-n)));
+  }
+  return {meld:Math.max(6,meld), meldNa: meldNa!==null?Math.max(6,meldNa):null};
+}
+function childPugh(){
+  const bili=num("l_bili"), alb=num("l_alb"), inr=num("l_inr");
+  const asc=parseInt(val("hp_ascitis"))||0, enc=parseInt(val("hp_encef"))||0;
+  if(bili===null||alb===null||inr===null)return null;
+  let pts=0;
+  pts += bili<2?1:bili<=3?2:3;
+  pts += alb>3.5?1:alb>=2.8?2:3;
+  pts += inr<1.7?1:inr<=2.3?2:3;
+  pts += asc===0?1:asc===1?2:3;
+  pts += enc===0?1:enc===1?2:3;
+  const clase = pts<=6?"A":pts<=9?"B":"C";
+  return {pts, clase};
+}
+function hayHepato(){ return chk("flag_hepato"); }
+function planHepato(){
+  if(!hayHepato())return null;
+  const P={general:[],conducta:[],diferir:[],referir:[],scores:{}};
+  const m=meldScore(), cp=childPugh();
+  P.scores.meld=m; P.scores.cp=cp;
+  if(m)P.general.push(`MELD ${m.meld}${m.meldNa!==null?` · MELD-Na ${m.meldNa}`:""}. MELD < 10 ≈ riesgo quirúrgico bajo; MELD > 15 ≈ riesgo altísimo → diferir y evaluar para trasplante cuando sea posible.`);
+  if(cp)P.general.push(`Child-Pugh ${cp.pts} puntos — Clase ${cp.clase}. Mortalidad aproximada por clase (datos históricos): A ~10%, B ~30%, C >75%.`);
+  if(!m&&!cp)P.general.push("Ingrese bilirrubina, INR, creatinina y albúmina para calcular MELD y Child-Pugh.");
+  P.general.push("El riesgo depende de 3 cosas: severidad de la hepatopatía, tipo de cirugía y urgencia. La cirugía de emergencia multiplica la mortalidad (~17% vs ~2% electiva en abdominal).");
+
+  // Diferir
+  if(chk("hp_hepatitis"))P.diferir.push("Sospecha de hepatitis aguda (transaminasas > 3× normal): diferir cirugía no emergente.");
+  if((parseInt(val("hp_encef"))||0)>=2)P.diferir.push("Encefalopatía hepática no controlada: diferir cirugía electiva hasta controlarla.");
+  if((parseInt(val("hp_ascitis"))||0)>=2)P.diferir.push("Ascitis no controlada/refractaria: diferir cirugía abdominal o de hernia electiva (afecta cicatrización); optimizar primero.");
+  const plt=num("l_plt");
+  if(plt!==null){
+    const pltK=plt>1000?plt/1000:plt; // acepta 50 o 50000
+    if(pltK<50)P.diferir.push(`Plaquetas ~${Math.round(pltK)}×10³/µL: por debajo de 50 000 se sugiere corregir antes de cirugía (100 000 si alto riesgo de sangrado). Umbral con evidencia limitada.`);
+  }
+  if(cp&&cp.clase==="C")P.diferir.push("Child-Pugh C: riesgo extremo; posponer cirugía electiva y referir a centro de trasplante.");
+  if(m&&m.meld>15)P.diferir.push("MELD > 15: riesgo extremo; diferir y evaluar para trasplante cuando sea posible.");
+
+  // Conducta
+  P.conducta.push("Coagulopatía: NO corregir el INR de rutina con plasma fresco (la expansión de volumen es contraproducente); el INR no refleja bien el riesgo de sangrado en cirrosis. Si las plaquetas están muy bajas, considerar transfusión o eltrombopag.");
+  P.conducta.push("Betabloqueadores no selectivos: continuar (carvedilol preferido) salvo hipotensión o bradicardia.");
+  P.conducta.push("Encefalopatía: minimizar opioides y benzodiacepinas; continuar lactulosa/rifaximina; vigilar evacuaciones y evitar estreñimiento.");
+  P.conducta.push("Analgesia: evitar AINEs; acetaminofén hasta 2 g/día es seguro. No restringir proteínas. Vigilar peso diario y usar diuréticos según el caso para la ascitis.");
+
+  // Referir
+  if((cp&&/[BC]/.test(cp.clase))||(m&&m.meld>=10))
+    P.referir.push("Referir a hepatología/gastroenterología (Child-Pugh B-C o MELD elevado): optimización y estratificación.");
+  if((cp&&cp.clase==="C")||(m&&m.meld>15))
+    P.referir.push("Referir a centro de trasplante antes de cirugía electiva.");
+  P.referir.push("Score VOCAL-Penn (en línea) es el más preciso para mortalidad perioperatoria en cirrosis e incorpora el tipo de cirugía; considerarlo para la decisión.");
+  return P;
+}
+function hepatoLines(){
+  const p=planHepato();if(!p)return [];
+  return [...p.general,...p.diferir,...p.conducta,...p.referir];
+}
+
+/* ================= AUDIT-C (consumo de alcohol) ================= */
+function auditC(){
+  if(!chk("flag_audit"))return null;
+  const a=parseInt(val("au_1"))||0, b=parseInt(val("au_2"))||0, c=parseInt(val("au_3"))||0;
+  const total=a+b+c;
+  const sexo=val("sexo");
+  const umbral = sexo==="Femenino"?3:4;
+  const positivo = total>=umbral;
+  return {total, umbral, positivo};
+}
+
+/* ================= ESTUDIOS PREOPERATORIOS INDICADOS ================= */
+// Se arman por la CONDICIÓN del paciente (no por el tipo de cirugía).
+// Un paciente de catarata con TFG 30 sí activa el estudio renal, aunque la catarata sola no lo pida.
+function estudiosIndicados(){
+  const out=[];
+  const add=(cond,txt)=>{ if(cond && !out.includes(txt)) out.push(txt); };
+  const tfg=tfgCKDEPI();
+
+  // Diabetes
+  add(tieneDiabetes(), "Diabetes: HbA1c de los últimos 3 meses (meta < 8% para cirugía electiva — ADA 2026) y glucemia preoperatoria.");
+  // Renal / electrolitos
+  const renal = chk("flag_renal")||chk("rn_dialisis")||(tfg!==null&&tfg<60)||(num("l_cr")!==null&&num("l_cr")>1.3);
+  add(renal, "Función renal: creatinina y TFG; electrolitos séricos (Na, K).");
+  add((tfg!==null&&tfg<30)||chk("rn_dialisis"), "ERC avanzada / diálisis: hemograma (anemia), calcio-fósforo y gasometría venosa (acidosis); valorar causa y optimización por nefrología.");
+  // Hepatopatía
+  add(chk("flag_hepato"), "Hepatopatía: bilirrubina, INR y albúmina (para MELD/Child-Pugh); considerar ecografía hepática si no se ha estudiado.");
+  // Anticoagulación / antiagregación
+  add(!!val("at_ac"), "Anticoagulación: TP/INR de control.");
+  add(/Dabigatr/i.test(val("at_ac")), "Dabigatrán: TFG para ajustar el tiempo de suspensión.");
+  // Cardiovascular
+  add(chk("rcri_isq")||chk("rcri_icc")||chk("rcri_acv")||hayArritmia()||chk("arr_cied"), "Cardiovascular: EKG de 12 derivaciones.");
+  add(chk("rcri_icc")||scoreTotal("RCRI")>1, "Riesgo cardíaco elevado con disnea o capacidad funcional limitada: considerar NT-proBNP/BNP ± troponina (AHA/ACC 2024, Clase 2a).");
+  // Anemia
+  const hb=num("l_hb"), sexo=val("sexo");
+  const anemia = hb!==null && ((sexo==="Femenino"&&hb<12)||(sexo!=="Femenino"&&hb<13));
+  add(anemia, "Anemia: estudio (ferritina, saturación de transferrina) y optimización antes de cirugía mayor electiva.");
+  // Pulmonar
+  add(chk("pul_epoc")||chk("pul_otra")||scoreTotal("ARISCAT")>=45, "Neumopatía: considerar Rx de tórax y espirometría SOLO si están dirigidas (disnea no explicada, EPOC no caracterizada); nunca de rutina.");
+  // Alcohol
+  const au=auditC();
+  add(au&&au.positivo, "Consumo de alcohol de riesgo: pruebas hepáticas (AST/ALT, GGT).");
+  // Embarazo en mujer en edad reproductiva
+  const edadEst=num("edad");
+  add(sexo==="Femenino"&&edadEst!==null&&edadEst>=12&&edadEst<=55, "Mujer en edad reproductiva: prueba de embarazo antes de cirugía electiva.");
+  // Nutrición (albúmina baja)
+  const alb=num("l_alb");
+  add(alb!==null&&alb<3.5, "Albúmina baja: valoración nutricional; la desnutrición predice complicaciones — considerar prehabilitación/soporte nutricional antes de cirugía mayor.");
+  // Esteroides crónicos
+  add(chk("flag_esteroides"), "Uso crónico de glucocorticoides: valorar necesidad de dosis de estrés perioperatoria (riesgo de insuficiencia suprarrenal).");
+  return out;
+}
+
+/* ================= ESTEROIDES DE ESTRÉS (glucocorticoides crónicos) ================= */
+// Assoc. of Anaesthetists / RCP / Society for Endocrinology (Anaesthesia 2020).
+function planEsteroides(){
+  if(!chk("flag_esteroides"))return null;
+  const tipo=val("tipo");
+  const menor=["Oftalmológica","Dermatológica/plástica menor","Endoscopía con sedación","Cabeza y cuello/tiroides"].includes(tipo);
+  const P={general:[],conducta:[],referir:[]};
+  P.general.push("Uso crónico de glucocorticoides (≈ prednisona > 5 mg/día por > 2-3 semanas en el último año): posible supresión del eje hipotálamo-hipófisis-suprarrenal; riesgo de crisis suprarrenal perioperatoria.");
+  P.conducta.push("Continuar la dosis habitual de glucocorticoide la mañana de la cirugía.");
+  if(menor)
+    P.conducta.push("Cirugía menor / anestesia local o superficial: suele bastar la dosis habitual; considerar hidrocortisona 25-50 mg IV a la inducción si hay duda.");
+  else
+    P.conducta.push("Cirugía moderada: hidrocortisona 50 mg IV a la inducción + 25 mg c/8 h por 24 h. Cirugía mayor: hidrocortisona 100 mg IV a la inducción + 50 mg c/8 h por 24-48 h; luego reducir a la dosis habitual.");
+  P.conducta.push("Vigilar datos de insuficiencia suprarrenal: hipotensión refractaria a líquidos/vasopresores, náusea, hipoglucemia, hiponatremia.");
+  P.referir.push("En insuficiencia suprarrenal conocida o duda diagnóstica, coordinar con endocrinología.");
+  return P;
+}
+function esteroidesLines(){const p=planEsteroides();if(!p)return[];return[...p.general,...p.conducta,...p.referir];}
+
+/* ================= OTROS MEDICAMENTOS (conciliación) ================= */
+function hayMedic(){ return chk("flag_horm")||chk("flag_inmuno")||chk("flag_herbal")||chk("flag_litio"); }
+function planMedicamentos(){
+  if(!hayMedic())return null;
+  const P=[];
+  if(chk("flag_horm"))
+    P.push("Estrógenos / anticonceptivos orales / terapia hormonal: aumentan el riesgo de TEV. En cirugía de riesgo trombótico moderado-alto o inmovilización prolongada, valorar suspender 4-6 semanas antes (balanceando el riesgo de embarazo no planeado) y asegurar tromboprofilaxis; en procedimientos menores suele continuarse.");
+  if(chk("flag_inmuno"))
+    P.push("Inmunosupresores / biológicos: el metotrexato puede continuarse en la mayoría de cirugías; los biológicos (anti-TNF y otros) suelen suspenderse programando la cirugía al final del intervalo de dosificación, por riesgo de infección y de cicatrización. Coordinar con el médico tratante / reumatología.");
+  if(chk("flag_herbal"))
+    P.push("Suplementos herbales: suspender 1-2 semanas antes. Las «4 G» aumentan el sangrado (Ginkgo, Garlic/ajo, Ginseng, Ginger/jengibre); otros interactúan con la anestesia (kava, valeriana, hierba de San Juan).");
+  if(chk("flag_litio"))
+    P.push("Litio / IMAO: el litio puede prolongar los relajantes musculares y requiere control de volumen y electrolitos (considerar suspender 24-72 h según función renal, con reinicio temprano). Los IMAO tienen interacciones anestésicas graves (meperidina, simpaticomiméticos); coordinar con anestesia / psiquiatría.");
+  return P;
+}
+function medicamentosLines(){return planMedicamentos()||[];}
+
+/* ================= DELIRIUM POSTOPERATORIO ================= */
+function hayDelirium(){
+  const edad=num("edad");
+  return chk("flag_delirium") || ((edad!==null&&edad>=65) && (scoreTotal("mFI-5")>=2 || (parseInt(val("cfs_sel"))||0)>=5));
+}
+function planDelirium(){
+  if(!hayDelirium())return null;
+  const P={general:[],conducta:[]};
+  P.general.push("Adulto mayor con fragilidad: riesgo elevado de delirium postoperatorio. Predictores: edad avanzada, fragilidad, deterioro cognitivo previo, comorbilidad y polifarmacia.");
+  P.conducta.push("Evitar/minimizar fármacos desencadenantes: benzodiacepinas, anticolinérgicos, meperidina y sedantes acumulados (polifarmacia).");
+  P.conducta.push("Medidas no farmacológicas: reorientación, movilización temprana, higiene del sueño, hidratación, uso de lentes y audífonos, analgesia multimodal que minimice opioides.");
+  P.conducta.push("Evaluación cognitiva basal y vigilancia postoperatoria con una herramienta estructurada (p. ej. CAM).");
+  return P;
+}
+function deliriumLines(){const p=planDelirium();if(!p)return[];return[...p.general,...p.conducta];}
+
+/* ================= ANEMIA PREOPERATORIA / PBM ================= */
+function hayAnemia(){
+  const hb=num("l_hb"), sexo=val("sexo");
+  if(hb===null)return false;
+  return (sexo==="Femenino"&&hb<12)||(sexo!=="Femenino"&&hb<13);
+}
+function planAnemia(){
+  if(!hayAnemia())return null;
+  const hb=num("l_hb");
+  const P={general:[],conducta:[],referir:[]};
+  P.general.push(`Anemia preoperatoria (Hb ${hb} g/dl): predictor independiente de transfusión y de peores desenlaces (manejo de sangre del paciente / PBM).`);
+  P.conducta.push("Estudiar la causa antes de cirugía mayor electiva: ferritina y saturación de transferrina (descartar ferropenia), función renal, y B12/folato según el caso.");
+  P.conducta.push("Ferropenia: hierro oral si hay tiempo (6-8 semanas) o hierro IV si la cirugía es próxima o la anemia es moderada-severa. Diferir cirugía mayor electiva para optimizar cuando sea posible.");
+  P.conducta.push("Transfusión con estrategia restrictiva (umbral de Hb 7-8 g/dl en la mayoría); evitar transfundir solo para 'normalizar' cifras.");
+  P.referir.push("Anemia significativa no estudiada antes de cirugía con sangrado esperado: optimizar o referir a medicina interna / hematología.");
+  return P;
+}
+function anemiaLines(){const p=planAnemia();if(!p)return[];return[...p.general,...p.conducta,...p.referir];}
+
+/* ================= DISFUNCIÓN TIROIDEA ================= */
+function hayTiroides(){return chk("flag_tiroides");}
+function planTiroides(){
+  if(!hayTiroides())return null;
+  const est=val("tiroides_est");
+  const P=[];
+  if(est==="Hipotiroidismo no controlado")
+    P.push("Hipotiroidismo no controlado: en cirugía electiva, diferir y optimizar (riesgo de hipotermia, íleo, sensibilidad a sedantes; en casos severos, coma mixedematoso). Continuar levotiroxina en el perioperatorio.");
+  else if(est==="Hipertiroidismo no controlado")
+    P.push("Hipertiroidismo no controlado: diferir cirugía electiva por riesgo de tormenta tiroidea; optimizar con antitiroideos ± betabloqueador antes de programar.");
+  else
+    P.push("Enfermedad tiroidea controlada: continuar el tratamiento habitual; sin medidas especiales. Verificar función tiroidea reciente si hay cambios clínicos.");
+  return P;
+}
+function tiroidesLines(){return planTiroides()||[];}
+
+/* ================= ACS-NSQIP (resultados de la calculadora externa) ================= */
+const ACS_CAMPOS=[
+  ["acs_seria","Riesgo de complicación seria","%"],
+  ["acs_any","Riesgo de cualquier complicación","%"],
+  ["acs_death","Mortalidad","%"],
+  ["acs_card","Complicación cardíaca","%"],
+  ["acs_neumo","Neumonía","%"],
+  ["acs_itu","Infección urinaria","%"],
+  ["acs_tev","Tromboembolismo venoso","%"],
+  ["acs_renal","Falla renal","%"],
+  ["acs_isq","Infección del sitio quirúrgico","%"],
+  ["acs_reing","Reingreso","%"],
+  ["acs_reint","Reintervención","%"],
+  ["acs_egreso","Egreso a centro de cuidados","%"],
+  ["acs_estancia","Estancia prevista","días"],
+];
+function acsDatos(){
+  const out=[];
+  ACS_CAMPOS.forEach(([id,label,u])=>{const v=val(id);if(v)out.push({label,val:v,u});});
+  const g=val("acs_global"); // riesgo global texto
+  return {filas:out, global:g};
+}
+function hayACS(){const d=acsDatos();return d.filas.length>0||!!d.global;}
+// Lee el texto pegado del resultado ACS-NSQIP y llena los campos (mejor esfuerzo).
+// Carga pdf.js desde internet (una sola vez) para leer PDFs.
+function cargarPdfJs(){
+  return new Promise((res,rej)=>{
+    if(window.pdfjsLib){res(window.pdfjsLib);return;}
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    s.onload=()=>{try{window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}catch(e){} res(window.pdfjsLib);};
+    s.onerror=()=>rej(new Error("No se pudo cargar el lector de PDF (revise su conexión)."));
+    document.head.appendChild(s);
+  });
+}
+// Sube el PDF de ACS-NSQIP, extrae su texto y reutiliza el reconocimiento automático.
+async function importarACSpdf(ev){
+  const f=ev.target.files[0]; if(!f){return;}
+  setStatus("Leyendo PDF…");
+  try{
+    const lib=await cargarPdfJs();
+    const buf=await f.arrayBuffer();
+    const pdf=await lib.getDocument({data:buf}).promise;
+    let texto="";
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const tc=await page.getTextContent();
+      texto += " " + tc.items.map(it=>it.str).join(" ");
+    }
+    const el=document.getElementById("acs_paste"); if(el)el.value=texto;
+    importarACS();
+  }catch(e){
+    alert("No se pudo leer el PDF: "+(e.message||e)+"\n\nPuede pegar el texto en su lugar.");
+    setStatus("");
+  }
+  ev.target.value="";
+}
+function importarACS(){
+  const t=(document.getElementById("acs_paste")||{}).value||"";
+  if(!t.trim()){alert("Primero pegue el texto del resultado de la calculadora.");return;}
+  const norm=t.replace(/ /g," ").replace(/\s+/g," ");
+  // etiqueta (inglés y español) -> campo. Se toma el PRIMER porcentaje que sigue a la etiqueta (riesgo del paciente).
+  // cada etiqueta usa SOLO grupos no-capturantes (?:...) para que el % quede en m[1]
+  const map=[
+    ["serious complication|complicaci[oó]n seria","acs_seria"],
+    ["any complication|cualquier complicaci[oó]n","acs_any"],
+    ["cardiac (?:complication|event|arrest)|complicaci[oó]n card[ií]aca|infarto","acs_card"],
+    ["pneumonia|neumon[ií]a","acs_neumo"],
+    ["urinary tract infection|infecci[oó]n urinaria|\\bUTI\\b","acs_itu"],
+    ["venous thromboembolism|tromboembolismo|\\bVTE\\b","acs_tev"],
+    ["renal failure|falla renal|insuficiencia renal","acs_renal"],
+    ["surgical site infection|infecci[oó]n del sitio|\\bSSI\\b","acs_isq"],
+    ["readmission|reingreso|readmisi[oó]n","acs_reing"],
+    ["return to (?:the )?or|reoperation|reintervenci[oó]n|reoperaci[oó]n","acs_reint"],
+    ["discharge to (?:a )?(?:nursing|rehab)|nursing or rehab|egreso a (?:un )?centro","acs_egreso"],
+    ["risk of death|\\bdeath\\b|mortalidad|muerte","acs_death"],
+  ];
+  let n=0;
+  map.forEach(([lab,id])=>{
+    const rx=new RegExp("(?:"+lab+")[^0-9%]{0,45}?([0-9]{1,2}(?:\\.[0-9])?)\\s*%","i");
+    const m=norm.match(rx);
+    if(m){const el=document.getElementById(id);if(el)el.value=m[1];n++;}
+  });
+  // estancia prevista
+  const le=norm.match(/length of stay[^0-9]{0,30}?([0-9]+(?:\.[0-9])?)\s*day/i)
+        || norm.match(/estancia[^0-9]{0,30}?([0-9]+(?:\.[0-9])?)\s*d[ií]a/i)
+        || norm.match(/([0-9]+(?:\.[0-9])?)\s*days?\b[^%]{0,20}length of stay/i);
+  if(le){const el=document.getElementById("acs_estancia");if(el){el.value=le[1];n++;}}
+  calc();
+  setStatus(n?("ACS-NSQIP: importados "+n+" valores — revise la tabla"):"No se reconocieron valores; revise el texto o ingréselos a mano");
 }
 
 /* ================= ANTITROMBÓTICOS (CHEST 2022) ================= */
@@ -1887,6 +2487,29 @@ function calc(){
   if(ciedBox)ciedBox.style.display=chk("arr_cied")?"block":"none";
   const dmt=document.getElementById("dm_tfg_disp");
   if(dmt){const t=tfgCKDEPI();dmt.value=(t!==null)?t+" ml/min":"— (falta creatinina/edad/sexo)";}
+  const lt=document.getElementById("l_tfg_disp");
+  if(lt){const t=tfgCKDEPI();lt.value=(t!==null)?t+" ("+estadioERC(t)+")":"—";}
+  // cajas de hepatopatía y AUDIT-C
+  const hb=document.getElementById("hepato_box");
+  if(hb)hb.style.display=chk("flag_hepato")?"block":"none";
+  const ab=document.getElementById("audit_box");
+  if(ab)ab.style.display=chk("flag_audit")?"block":"none";
+  const tb=document.getElementById("tiroides_box");
+  if(tb)tb.style.display=chk("flag_tiroides")?"block":"none";
+  refreshSysAcc();
+  // resultados en vivo de scores hepáticos
+  const hs=document.getElementById("hepato_scores");
+  if(hs){
+    if(chk("flag_hepato")){
+      const m=meldScore(), cp=childPugh();
+      let s=[];
+      if(m)s.push(`MELD ${m.meld}`+(m.meldNa!==null?` · MELD-Na ${m.meldNa}`:""));
+      if(cp)s.push(`Child-Pugh ${cp.pts} (Clase ${cp.clase})`);
+      hs.innerHTML = s.length?s.join(" &nbsp;·&nbsp; "):"Ingrese bilirrubina, INR, creatinina y albúmina.";
+    } else hs.innerHTML="";
+  }
+  const au=document.getElementById("audit_result");
+  if(au){const a=auditC();au.innerHTML=a?`AUDIT-C ${a.total}/12 — ${a.positivo?"<b>positivo</b> (consumo de riesgo)":"negativo"} (umbral ≥${a.umbral})`:"";}
   render();
 }
 
@@ -1954,7 +2577,18 @@ const SECCIONES=[
   {id:"profx", label:"Profilaxis antibiótica", auto:()=>true, lines:()=>profilaxisLines()},
   {id:"tromboprofx", label:"Tromboprofilaxis farmacológica", auto:()=>scoreTotal("Caprini")>=3, lines:()=>planTromboprofilaxis()},
   {id:"antitrombo", label:"Manejo antitrombótico (anticoag./antiagreg.)", auto:()=>planAntitrombotico().length>0, lines:()=>planAntitrombotico()},
+  {id:"acsnsqip", label:"Riesgo quirúrgico ACS-NSQIP", auto:()=>hayACS(), lines:false},
+  {id:"estudiosind", label:"Estudios preoperatorios indicados", auto:()=>estudiosIndicados().length>0, lines:()=>estudiosIndicados()},
   {id:"arritmias", label:"Manejo de arritmias / trastornos del ritmo", auto:()=>hayArritmia(), lines:()=>arritmiaLines()},
+  {id:"renal", label:"Manejo renal / hidroelectrolítico", auto:()=>hayRenal(), lines:()=>renalLines()},
+  {id:"pulmonar", label:"Manejo de neumopatía / riesgo pulmonar", auto:()=>hayPulmonar(), lines:()=>pulmonarLines()},
+  {id:"orina", label:"Vías urinarias / ITU", auto:()=>hayOrina(), lines:()=>orinaLines()},
+  {id:"hepato", label:"Manejo de hepatopatía", auto:()=>hayHepato(), lines:()=>hepatoLines()},
+  {id:"anemia", label:"Anemia preoperatoria / manejo de sangre (PBM)", auto:()=>hayAnemia(), lines:()=>anemiaLines()},
+  {id:"esteroides", label:"Esteroides de estrés (glucocorticoides crónicos)", auto:()=>chk("flag_esteroides"), lines:()=>esteroidesLines()},
+  {id:"medicamentos", label:"Manejo de otros medicamentos", auto:()=>hayMedic(), lines:()=>medicamentosLines()},
+  {id:"tiroides", label:"Disfunción tiroidea", auto:()=>hayTiroides(), lines:()=>tiroidesLines()},
+  {id:"delirium", label:"Prevención de delirium postoperatorio", auto:()=>hayDelirium(), lines:()=>deliriumLines()},
   {id:"diabetes", label:"Manejo perioperatorio de diabetes", auto:()=>tieneDiabetes(), lines:()=>diabetesLines()},
   {id:"hidrico", label:"Plan hídrico", auto:()=>true, lines:false},
 ];
@@ -2154,6 +2788,7 @@ function render(){
   <tr><td class="lab-sm">Hematocrito</td><td>${labVal("l_hto","%")}</td><td class="lab-sm">Glucosa</td><td>${labVal("l_glu","mg/dl")}</td></tr>
   <tr><td class="lab-sm">Plaquetas</td><td>${labVal("l_plt","/mm³")}</td><td class="lab-sm">Sodio</td><td>${labVal("l_na","mEq/l")}</td></tr>
   <tr><td class="lab-sm">Neutrófilos</td><td>${labVal("l_neu","%")}</td><td class="lab-sm">Potasio</td><td>${labVal("l_k","mEq/l")}</td></tr>
+  ${(val("l_alb")||val("l_bili"))?`<tr><td class="lab-sm">Albúmina</td><td>${labVal("l_alb","g/dl")}</td><td class="lab-sm">Bilirrubina</td><td>${labVal("l_bili","mg/dl")}</td></tr>`:""}
   <tr><td class="lab-sm">Coagulación</td><td colspan="3">TP: ${orDash(val("l_tp"))} seg&nbsp;&nbsp; TPT: ${orDash(val("l_tpt"))} seg&nbsp;&nbsp; INR: ${orDash(val("l_inr"))}</td></tr>
   ${(val("l_ntprobnp")||val("l_bnp")||val("l_tn"))?`<tr><td class="lab-sm">Biomarcadores</td><td colspan="3">${
       [val("l_ntprobnp")?"NT-proBNP: "+esc(val("l_ntprobnp"))+" ng/L":"",
@@ -2164,6 +2799,24 @@ function render(){
   <h2>Estratificación de riesgo</h2>
   <table class="risk-tbl"><tr><th>Escala</th><th style="text-align:center">Resultado</th><th style="text-align:center">Nivel</th><th>Interpretación y conducta sugerida</th></tr>
   ${riskRows}</table>
+
+  ${(function(){if(!secOn("acsnsqip"))return "";const d=acsDatos();
+    const manual=SEC_USERSET["acsnsqip"]&&SEC_STATE["acsnsqip"];
+    if(!d.filas.length && !d.global && !manual)return "";
+    if(!d.filas.length && !d.global)return `<h2>Riesgo quirúrgico ACS-NSQIP</h2><div class="muted">Ingrese los resultados de la calculadora ACS-NSQIP.</div>`;
+    const filas=d.filas.map(f=>`<tr><td>${esc(f.label)}</td><td style="text-align:right"><b>${esc(f.val)}${f.u==="%"?" %":f.u==="días"?" días":""}</b></td></tr>`).join("");
+    return `<h2>Riesgo quirúrgico ACS-NSQIP</h2>
+    <div class="muted" style="margin-bottom:5px">Estimación de la calculadora ACS-NSQIP (riskcalculator.facs.org)${d.global?` · Riesgo global: <b>${esc(d.global)}</b>`:""}</div>
+    ${filas?`<table class="dm-tbl" style="max-width:420px"><tr><th>Desenlace</th><th style="text-align:right">Riesgo estimado</th></tr>${filas}</table>`:""}`;})()}
+
+  ${(function(){if(!secOn("estudiosind"))return "";
+    const L=filtLines("estudiosind",estudiosIndicados());
+    const manual=SEC_USERSET["estudiosind"]&&SEC_STATE["estudiosind"];
+    if(!L.length && !manual)return "";
+    if(!L.length)return `<h2>Estudios preoperatorios indicados</h2><div class="muted">Sin estudios adicionales objetivamente indicados por las condiciones registradas.</div>`;
+    return `<h2>Estudios preoperatorios indicados</h2>
+    <div class="muted" style="margin-bottom:5px">Indicados por las condiciones del paciente (no por el tipo de cirugía)</div>
+    <div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
 
   ${secOn("algo")?`<h2>Algoritmo cardíaco perioperatorio</h2>
   <div class="muted" style="margin-bottom:5px">Enfoque escalonado AHA/ACC 2024: riesgo calculado → capacidad funcional (DASI) → biomarcadores → imagen selectiva</div>
@@ -2215,6 +2868,95 @@ function render(){
     <div class="muted" style="margin-bottom:5px">Orientación perioperatoria (AHA/ACC 2024; FA: ACC/AHA/ACCP/HRS 2023)</div>
     ${cuerpo}`;})()}
 
+  ${(function(){if(!secOn("renal"))return "";const p=planRenal();
+    const manual=SEC_USERSET["renal"]&&SEC_STATE["renal"];
+    if(!p&&!manual)return "";
+    if(!p)return `<h2>Manejo renal / hidroelectrolítico</h2><div class="muted">Marque enfermedad renal o ingrese creatinina/electrolitos para generar la conducta.</div>`;
+    const bloque=(t,arr)=>{const L=filtLines("renal",arr);return L.length?`<div class="arr-sub">${t}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";};
+    const cuerpo=bloque("Consideraciones generales",p.general)+bloque("Conducta / nefroprotección",p.conducta)+bloque("Electrolitos",p.electrolitos)+bloque("A quién referir / vigilancia",p.referir);
+    if(!cuerpo)return "";
+    return `<h2>Manejo renal / hidroelectrolítico</h2><div class="muted" style="margin-bottom:5px">KDIGO 2024; consenso ADQI/POQI de LRA postoperatoria</div>${cuerpo}`;})()}
+
+  ${(function(){if(!secOn("pulmonar"))return "";const p=planPulmonar();
+    const manual=SEC_USERSET["pulmonar"]&&SEC_STATE["pulmonar"];
+    if(!p&&!manual)return "";
+    if(!p)return `<h2>Manejo de neumopatía / riesgo pulmonar</h2><div class="muted">Marque la neumopatía o calcule ARISCAT/STOP-BANG para generar la conducta.</div>`;
+    const bloque=(t,arr)=>{const L=filtLines("pulmonar",arr);return L.length?`<div class="arr-sub">${t}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";};
+    const cuerpo=bloque("Consideraciones generales",p.general)+bloque("Conducta / optimización",p.conducta)+bloque("Estudios sugeridos",p.estudios)+bloque("A quién referir",p.referir);
+    if(!cuerpo)return "";
+    return `<h2>Manejo de neumopatía / riesgo pulmonar</h2><div class="muted" style="margin-bottom:5px">ACP (reducción de complicaciones pulmonares); ARISCAT; STOP-BANG</div>${cuerpo}`;})()}
+
+  ${(function(){if(!secOn("orina"))return "";const p=planOrina();
+    const manual=SEC_USERSET["orina"]&&SEC_STATE["orina"];
+    if(!p&&!manual)return "";
+    if(!p)return `<h2>Vías urinarias / ITU</h2><div class="muted">Marque síntomas urinarios o bacteriuria para generar la conducta.</div>`;
+    const bloque=(t,arr)=>{const L=filtLines("orina",arr);return L.length?`<div class="arr-sub">${t}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";};
+    const cuerpo=bloque("Consideraciones",p.general)+bloque("Conducta",p.conducta)+bloque("A quién referir",p.referir);
+    if(!cuerpo)return "";
+    return `<h2>Vías urinarias / ITU</h2><div class="muted" style="margin-bottom:5px">IDSA 2019 (bacteriuria asintomática); AAO / Choosing Wisely (pruebas de rutina)</div>${cuerpo}`;})()}
+
+  ${(function(){if(!secOn("hepato"))return "";const p=planHepato();
+    const manual=SEC_USERSET["hepato"]&&SEC_STATE["hepato"];
+    if(!p&&!manual)return "";
+    if(!p)return `<h2>Manejo de hepatopatía</h2><div class="muted">Marque «Hepatopatía crónica / cirrosis» en Evaluación por sistemas para generar la conducta.</div>`;
+    const bloque=(t,arr)=>{const L=filtLines("hepato",arr);return L.length?`<div class="arr-sub">${t}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";};
+    let scoreTbl="";
+    if(p.scores.meld||p.scores.cp){
+      scoreTbl=`<table class="dm-tbl" style="max-width:420px"><tr><th>Score</th><th>Resultado</th></tr>`
+        +(p.scores.meld?`<tr><td>MELD${p.scores.meld.meldNa!==null?" / MELD-Na":""}</td><td><b>${p.scores.meld.meld}${p.scores.meld.meldNa!==null?` / ${p.scores.meld.meldNa}`:""}</b></td></tr>`:"")
+        +(p.scores.cp?`<tr><td>Child-Pugh</td><td><b>${p.scores.cp.pts} pts · Clase ${p.scores.cp.clase}</b></td></tr>`:"")
+        +`</table>`;
+    }
+    const cuerpo=bloque("Consideraciones generales",p.general)+(scoreTbl)+bloque("Diferir cirugía electiva si",p.diferir)+bloque("Conducta perioperatoria",p.conducta)+bloque("A quién referir",p.referir);
+    return `<h2>Manejo de hepatopatía</h2><div class="muted" style="margin-bottom:5px">Johnson 2024 (Gastroenterol Hepatol); VOCAL-Penn; MELD / Child-Pugh</div>${cuerpo}`;})()}
+
+  ${(function(){if(!secOn("anemia"))return "";const p=planAnemia();
+    const manual=SEC_USERSET["anemia"]&&SEC_STATE["anemia"];
+    if(!p&&!manual)return "";
+    if(!p)return `<h2>Anemia preoperatoria / PBM</h2><div class="muted">Ingrese la hemoglobina para evaluar anemia.</div>`;
+    const bloque=(t,arr)=>{const L=filtLines("anemia",arr);return L.length?`<div class="arr-sub">${t}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";};
+    const cuerpo=bloque("Consideraciones",p.general)+bloque("Conducta / optimización",p.conducta)+bloque("A quién referir",p.referir);
+    if(!cuerpo)return "";
+    return `<h2>Anemia preoperatoria / manejo de sangre (PBM)</h2><div class="muted" style="margin-bottom:5px">Consenso internacional de anemia y ferropenia (Anaesthesia 2017); CPOC 2022</div>${cuerpo}`;})()}
+
+  ${(function(){if(!secOn("esteroides"))return "";const p=planEsteroides();
+    const manual=SEC_USERSET["esteroides"]&&SEC_STATE["esteroides"];
+    if(!p&&!manual)return "";
+    if(!p)return `<h2>Esteroides de estrés</h2><div class="muted">Marque «Uso crónico de glucocorticoides» para generar la conducta.</div>`;
+    const bloque=(t,arr)=>{const L=filtLines("esteroides",arr);return L.length?`<div class="arr-sub">${t}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";};
+    const cuerpo=bloque("Consideraciones",p.general)+bloque("Conducta / dosis de estrés",p.conducta)+bloque("A quién referir",p.referir);
+    if(!cuerpo)return "";
+    return `<h2>Esteroides de estrés (glucocorticoides crónicos)</h2><div class="muted" style="margin-bottom:5px">Assoc. of Anaesthetists / RCP / Society for Endocrinology (Anaesthesia 2020)</div>${cuerpo}`;})()}
+
+  ${(function(){if(!secOn("medicamentos"))return "";
+    const L=filtLines("medicamentos",medicamentosLines());
+    const manual=SEC_USERSET["medicamentos"]&&SEC_STATE["medicamentos"];
+    if(!L.length&&!manual)return "";
+    if(!L.length)return `<h2>Manejo de otros medicamentos</h2><div class="muted">Marque los medicamentos de manejo especial en Evaluación por sistemas.</div>`;
+    return `<h2>Manejo de otros medicamentos</h2><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
+
+  ${(function(){if(!secOn("tiroides"))return "";
+    const L=filtLines("tiroides",tiroidesLines());
+    const manual=SEC_USERSET["tiroides"]&&SEC_STATE["tiroides"];
+    if(!L.length&&!manual)return "";
+    if(!L.length)return `<h2>Disfunción tiroidea</h2><div class="muted">Marque «Disfunción tiroidea» en Evaluación por sistemas.</div>`;
+    return `<h2>Disfunción tiroidea</h2><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
+
+  ${(function(){if(!secOn("delirium"))return "";const p=planDelirium();
+    const manual=SEC_USERSET["delirium"]&&SEC_STATE["delirium"];
+    if(!p&&!manual)return "";
+    if(!p)return `<h2>Prevención de delirium postoperatorio</h2><div class="muted">Se activa en adulto mayor con fragilidad (CFS≥5 o mFI-5≥2).</div>`;
+    const bloque=(t,arr)=>{const L=filtLines("delirium",arr);return L.length?`<div class="arr-sub">${t}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";};
+    const cuerpo=bloque("Consideraciones",p.general)+bloque("Conducta / prevención",p.conducta);
+    if(!cuerpo)return "";
+    return `<h2>Prevención de delirium postoperatorio</h2><div class="muted" style="margin-bottom:5px">Adulto mayor con fragilidad (CFS / mFI-5)</div>${cuerpo}`;})()}
+
+  ${(function(){const a=auditC();if(!a)return "";
+    const txt = a.positivo
+      ? `AUDIT-C ${a.total}/12 (positivo, umbral ≥${a.umbral}): consumo de riesgo. Valorar reducción/cese preoperatorio y vigilar síndrome de abstinencia alcohólica perioperatorio (profilaxis con benzodiacepinas y tiamina si procede).`
+      : `AUDIT-C ${a.total}/12 (negativo, umbral ≥${a.umbral}): sin datos de consumo de riesgo.`;
+    return `<h2>Consumo de alcohol (AUDIT-C)</h2><div class="recs"><div class="ri">${esc(txt)}</div></div>`;})()}
+
   ${(function(){if(!secOn("diabetes"))return "";const d=planDiabetes();
     const manual=SEC_USERSET["diabetes"] && SEC_STATE["diabetes"];
     if(!d && !manual)return "";
@@ -2262,7 +3004,7 @@ function render(){
     <div class="sm">${esc(cl.nombre)}</div>
     <div class="sm" style="font-size:9.5px">${esc([cl.direccion,cl.telefono].filter(Boolean).join(" · "))}</div>
   </div>
-  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2026» (Diabetes Care. 2026;49(Suppl.1):S339–S355); Umpierrez GE et al., ensayo RABBIT 2 Surgery sobre esquema basal-bolo vs. escala móvil en cirugía general (Diabetes Care. 2011;34:256–261); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022); Kang DY et al., ensayo ASSURE-DES sobre aspirina en portadores de stent (J Am Coll Cardiol. 2024;84:2380–2389); guías de manejo antitrombótico en cirugía oftalmológica (American Academy of Ophthalmology / CHEST 2022); y para arritmias, «2023 ACC/AHA/ACCP/HRS Guideline for the Diagnosis and Management of Atrial Fibrillation» (Circulation. 2024;149:e1–e156) y el capítulo de arritmias y dispositivos de la guía perioperatoria AHA/ACC 2024. Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
+  <div class="ref">Escalas y conductas orientadas por: «2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery» (Circulation. 2024;150:e351–e442); Douketis JD et al., «Perioperative Management of Antithrombotic Therapy: An American College of Chest Physicians Clinical Practice Guideline» (Chest. 2022;162:e207–e243); guías ASH y sociedades latinoamericanas para prevención de tromboembolismo venoso (Blood Adv. 2022;6:3636–3649); Rüggeberg A et al., «Peri-operative fasting in adults: an international, multidisciplinary consensus statement» (Anaesthesia. 2026;81:840–851). American Diabetes Association, «Diabetes Care in the Hospital: Standards of Care in Diabetes—2026» (Diabetes Care. 2026;49(Suppl.1):S339–S355); Umpierrez GE et al., ensayo RABBIT 2 Surgery sobre esquema basal-bolo vs. escala móvil en cirugía general (Diabetes Care. 2011;34:256–261); Centre for Perioperative Care, «Guideline for Perioperative Care for People with Diabetes Mellitus» (CPOC 2022); Kang DY et al., ensayo ASSURE-DES sobre aspirina en portadores de stent (J Am Coll Cardiol. 2024;84:2380–2389); guías de manejo antitrombótico en cirugía oftalmológica (American Academy of Ophthalmology / CHEST 2022); y para arritmias, «2023 ACC/AHA/ACCP/HRS Guideline for the Diagnosis and Management of Atrial Fibrillation» (Circulation. 2024;149:e1–e156) y el capítulo de arritmias y dispositivos de la guía perioperatoria AHA/ACC 2024. Para enfermedad renal: KDIGO 2024 y el consenso ADQI/POQI de lesión renal aguda postoperatoria (Nat Rev Nephrol. 2021); para neumopatías: guía ACP de reducción de complicaciones pulmonares (Ann Intern Med. 2006) y escala ARISCAT; para vías urinarias: IDSA 2019 sobre bacteriuria asintomática y Schein et al. sobre pruebas de rutina en catarata (NEJM. 2000;342:168); para hepatopatía: Johnson KM, «Perioperative Risk in Patients With Cirrhosis» (Gastroenterol Hepatol. 2024) y score VOCAL-Penn (Hepatology. 2021); para agonistas GLP-1: guía multisociedad perioperatoria (Clin Gastroenterol Hepatol. 2024); para esteroides de estrés: Woodcock et al., manejo de glucocorticoides en insuficiencia suprarrenal (Anaesthesia. 2020;75:654); para anemia: consenso internacional de anemia y ferropenia perioperatoria (Anaesthesia. 2017;72:233) y CPOC 2022. Documento de apoyo a la decisión clínica; no reemplaza el juicio médico.</div>
   </div>`;
 
   document.getElementById("note").innerHTML=note;
