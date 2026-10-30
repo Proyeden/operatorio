@@ -295,9 +295,45 @@
        text-transform:uppercase;letter-spacing:.04em}
   .note .dm-tbl td{padding:4px 10px;font-size:11.5px;border-bottom:1px solid #edf1f3}
   .note .dm-tbl tr:nth-child(even) td{background:#f5fafa}
-  .note .recs-ol{margin:4px 0 0;padding-left:22px;font-size:11.5px;line-height:1.6}
+  /* ---- Tabla ACS-NSQIP ---- */
+  .note .acs-tbl{width:100%;border-collapse:collapse;margin:2px 0 2px}
+  .note .acs-tbl th{background:#12324a;color:#fff;padding:6px 8px;font-size:9px;text-align:left;
+       text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+  .note .acs-tbl td{padding:5px 8px;font-size:11px;border-bottom:1px solid #edf1f3;vertical-align:middle}
+  .note .acs-tbl .acs-name{font-weight:600;color:#17324d;width:23%}
+  .note .acs-tbl .acs-barcell{width:37%}
+  .note .acs-barhd{vertical-align:bottom}
+  .note .acs-axis{display:flex;justify-content:space-between;font-size:7.5px;font-weight:600;
+       opacity:.85;margin-top:3px;letter-spacing:0}
+  .note .acs-you{text-align:right;font-weight:700;color:#0e6b73;white-space:nowrap;width:11%}
+  .note .acs-avgval{text-align:right;color:#5b6b7a;white-space:nowrap;width:11%}
+  .note .acs-cmp{text-align:center;width:18%}
+  /* pista en escala fija 0–100 % con cuadrícula cada 10 % y tinte de zona (verde→rojo) */
+  .note .acs-track{position:relative;display:block;height:11px;border-radius:3px;overflow:visible;
+       background-color:#f2f5f6;
+       background-image:linear-gradient(to right,rgba(74,158,109,.14),rgba(230,180,70,.14) 55%,rgba(208,101,76,.18)),
+         repeating-linear-gradient(to right,transparent 0,transparent calc(10% - 1px),#cdd8dd calc(10% - 1px),#cdd8dd 10%);
+       border:1px solid #e2e8ea}
+  .note .acs-fill{position:absolute;left:0;top:0;height:100%;border-radius:3px 0 0 3px;min-width:1px}
+  .note .acs-fill.acs-up{background:#d0654c}
+  .note .acs-fill.acs-down{background:#4a9e6d}
+  .note .acs-fill.acs-eq{background:#6f8794}
+  .note .acs-avg{position:absolute;top:-2px;width:2px;height:15px;background:#12324a;border-radius:1px;transform:translateX(-1px)}
+  .note .acs-pill{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:9px;white-space:nowrap}
+  .note .acs-pill.acs-up{background:#fbe4e0;color:#96341f}
+  .note .acs-pill.acs-down{background:#e3f2e8;color:#255e40}
+  .note .acs-pill.acs-eq{background:#eef1f4;color:#5b6b7a}
+  .note .acs-foot{font-size:11px;color:#17324d;margin:6px 0 2px}
+  .note .acs-leg{font-size:9.5px;color:#6b7680;margin-top:5px;display:flex;align-items:center;flex-wrap:wrap;gap:0 3px}
+  .note .acs-lg-bar{display:inline-block;width:16px;height:9px;border-radius:2px;background:#6f8794;vertical-align:middle}
+  .note .acs-lg-avg{display:inline-block;width:2px;height:13px;background:#12324a;vertical-align:middle;margin:0 4px}
+  .note .recs-ol{margin:2px 0 0;padding-left:24px;font-size:11.5px;line-height:1.6}
   .note .recs-ol li{margin-bottom:5px;padding-left:4px}
   .note .recs-ol li::marker{color:#0e7c85;font-weight:700}
+  .note .rec-fase{margin-top:9px}
+  .note .rec-fase:first-child{margin-top:2px}
+  .note .rec-fase-hd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+       color:#0a5157;margin:0 0 3px;padding-bottom:3px;border-bottom:1px solid #cfe3e3}
   .note .rec-block{margin-bottom:12px}
   .note .rec-block-hd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
        color:#fff;padding:4px 10px;border-radius:5px;margin-bottom:5px;display:inline-block}
@@ -344,10 +380,20 @@
     .note h2 + .recs .ri:first-child,
     .note h2 + .recs-ol,
     .note h2 + .algo,
+    .note h2 + .acs-tbl,
+    .note h2 + .dm-grid,
     .note h2 + .muted{break-before:avoid!important;page-break-before:avoid!important}
     .note h2 + table tr:first-child td{break-inside:avoid!important}
+    /* un subtítulo/intro no debe quedar solo al pie: se queda con lo que sigue */
+    .note .muted + .acs-tbl, .note .muted + table, .note .muted + .recs,
+    .note .acs-tbl + .acs-foot{break-before:avoid!important;page-break-before:avoid!important}
+    .note .dm-sub, .note .rec-fase-hd, .note .acs-foot{break-after:avoid!important;page-break-after:avoid!important}
+    .note .rec-fase-hd{break-inside:avoid!important}
+    /* bloques cortos autocontenidos no se parten */
+    .note .algo, .note .frame, .note .callout{break-inside:avoid!important;page-break-inside:avoid!important}
     /* filas de tabla y renglones no se parten a la mitad */
     .note tr, .note .ri, .note .recs-ol li{break-inside:avoid!important;page-break-inside:avoid!important}
+    .note .recs, .note .recs-ol{orphans:2;widows:2}
     .note .risk-tbl th{background:#12324a!important;color:#fff!important}
     .note .frame{background:#fdf6e6!important}
     .note .algo.low{background:#eef7f1!important}
@@ -557,7 +603,11 @@
           </select></div>
           <div class="field"><label>Mano dominante</label><select id="dyn_hand" onchange="render()">
             <option value="">—</option><option>Derecha</option><option>Izquierda</option></select></div>
-          <div class="field"><label>Mejor de 2-3 intentos (kg)</label><input type="number" id="dyn_val" step="0.1" min="0" oninput="calc()"></div>
+          <div class="field"><label>Mejor de 2-3 intentos</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="dyn_val" step="0.1" min="0" oninput="calc()" style="flex:1">
+              <select id="dyn_unit" onchange="calc()" style="width:68px;flex:0 0 auto"><option value="kg">kg</option><option value="lb">lb</option></select>
+            </div></div>
         </div>
         <div class="hint" id="dyn_hint"></div>
       </div>
@@ -749,6 +799,8 @@
         <div class="field"><label>Estancia prevista (días)</label><input id="acs_estancia" oninput="calc()"></div>
         <div class="field"><label>Riesgo global (texto libre: bajo/promedio/alto)</label><input id="acs_global" oninput="calc()"></div>
       </div>
+      <input type="hidden" id="acs_meta">
+      <div class="hint" style="margin-top:4px">Al subir/pegar el informe también se capturan el <b>promedio</b> y la comparación (encima/igual/debajo del promedio) de cada desenlace para mostrarlos en la nota.</div>
     </div></div>
 
     <div class="card"><h2>Evaluación por sistemas</h2><div class="card-body">
@@ -1630,27 +1682,30 @@ function loadLogo(ev){
 
 /* ================= DINAMOMETRÍA (fuerza de prensión) ================= */
 function dinamometria(){
-  const dev=val("dyn_dev"), v=num("dyn_val"), sexo=val("sexo");
-  if(!dev || v===null)return null;
+  const dev=val("dyn_dev"), vRaw=num("dyn_val"), sexo=val("sexo");
+  const unit=val("dyn_unit")||"kg";
+  if(!dev || vRaw===null)return null;
   const clinico = (dev==="jamar"||dev==="digital");
   const devName = dev==="jamar"?"dinamómetro hidráulico":(dev==="digital"?"dinamómetro digital clínico":"Squegg");
+  const vKg = unit==="lb" ? vRaw*0.453592 : vRaw;          // umbrales EWGSOP2 están en kg
+  const disp = unit==="lb" ? `${vRaw.toFixed(1)} lb (${vKg.toFixed(1)} kg)` : `${vKg.toFixed(1)} kg`;
   let interp="", low=false, level="";
   if(!sexo){
-    interp=`${v.toFixed(1)} kg (${devName}). Indique el sexo para interpretar según umbrales de sarcopenia.`;
+    interp=`${disp} (${devName}). Indique el sexo para interpretar según umbrales de sarcopenia.`;
   } else {
     const corte = sexo==="Masculino"?27:16;
-    low = v<corte;
+    low = vKg<corte;
     level = low?"Baja":"Normal";
     if(clinico){
       interp = low
-        ? `${v.toFixed(1)} kg (${devName}) · fuerza BAJA para ${sexo.toLowerCase()} (umbral EWGSOP2 <${corte} kg). Sugiere debilidad muscular / probable sarcopenia: se asocia a mayor riesgo de complicaciones, estancia prolongada y mortalidad postoperatoria. Reforzar prehabilitación, soporte nutricional y proteico, y decisión compartida.`
-        : `${v.toFixed(1)} kg (${devName}) · fuerza conservada para ${sexo.toLowerCase()} (≥${corte} kg, umbral EWGSOP2). Buena reserva muscular.`;
+        ? `${disp} (${devName}) · fuerza BAJA para ${sexo.toLowerCase()} (umbral EWGSOP2 <${corte} kg). Sugiere debilidad muscular / probable sarcopenia: se asocia a mayor riesgo de complicaciones, estancia prolongada y mortalidad postoperatoria. Reforzar prehabilitación, soporte nutricional y proteico, y decisión compartida.`
+        : `${disp} (${devName}) · fuerza conservada para ${sexo.toLowerCase()} (≥${corte} kg, umbral EWGSOP2). Buena reserva muscular.`;
     } else {
       // Squegg / consumo: no intercambiable con cortes clínicos
-      interp = `${v.toFixed(1)} kg medido con Squegg (dispositivo de consumo). Valor orientativo y útil para seguimiento del mismo paciente con el mismo aparato; NO es intercambiable con los umbrales clínicos de sarcopenia (validados con dinamómetro hidráulico). Para estratificar riesgo formal, medir con dinamómetro clínico.`;
+      interp = `${disp} medido con Squegg (dispositivo de consumo). Valor orientativo y útil para seguimiento del mismo paciente con el mismo aparato; NO es intercambiable con los umbrales clínicos de sarcopenia (validados con dinamómetro hidráulico). Para estratificar riesgo formal, medir con dinamómetro clínico.`;
     }
   }
-  return {v, dev, devName, clinico, low, level, interp};
+  return {v:vKg, vRaw, unit, disp, dev, devName, clinico, low, level, interp};
 }
 function indiceTabaquico(){
   const cig=num("h_cig"), anos=num("h_anos");
@@ -2298,9 +2353,14 @@ const ACS_CAMPOS=[
   ["acs_egreso","Egreso a centro de cuidados","%"],
   ["acs_estancia","Estancia prevista","días"],
 ];
+function normCmp(s){s=(s||"").toLowerCase();
+  if(/above|encima/.test(s))return "encima";
+  if(/below|debajo/.test(s))return "debajo";
+  return "igual";}
+function acsMeta(){try{return JSON.parse(val("acs_meta")||"{}");}catch(e){return {};}}
 function acsDatos(){
-  const out=[];
-  ACS_CAMPOS.forEach(([id,label,u])=>{const v=val(id);if(v)out.push({label,val:v,u});});
+  const out=[]; const meta=acsMeta();
+  ACS_CAMPOS.forEach(([id,label,u])=>{const v=val(id);if(v){const m=meta[id]||{};out.push({id,label,val:v,u,avg:m.avg||"",cmp:m.cmp||""});}});
   const g=val("acs_global"); // riesgo global texto
   return {filas:out, global:g};
 }
@@ -2359,12 +2419,20 @@ function importarACS(){
     ["discharge to (?:a )?(?:nursing|rehab)|nursing or rehab|egreso a (?:un )?centro","acs_egreso"],
     ["risk of death|\\bdeath\\b|mortalidad|muerte","acs_death"],
   ];
-  let n=0;
+  let n=0; const meta={};
   map.forEach(([lab,id])=>{
-    const rx=new RegExp("(?:"+lab+")[^0-9%]{0,45}?([0-9]{1,2}(?:\\.[0-9])?)\\s*%","i");
+    // 1er %: riesgo del paciente · 2º % (opcional): promedio · palabra (opcional): comparación
+    const rx=new RegExp("(?:"+lab+")[^0-9%]{0,45}?([0-9]{1,2}(?:\\.[0-9])?)\\s*%(?:[^0-9%]{0,8}?([0-9]{1,2}(?:\\.[0-9])?)\\s*%)?(?:[^A-Za-z]{0,6}(above average|below average|average|por encima del promedio|por debajo del promedio|promedio))?","i");
     const m=norm.match(rx);
-    if(m){const el=document.getElementById(id);if(el)el.value=m[1];n++;}
+    if(m){
+      const el=document.getElementById(id);if(el)el.value=m[1];n++;
+      const info={};
+      if(m[2])info.avg=m[2];
+      if(m[3])info.cmp=normCmp(m[3]);
+      if(m[2]||m[3])meta[id]=info;
+    }
   });
+  try{const mel=document.getElementById("acs_meta");if(mel)mel.value=JSON.stringify(meta);}catch(e){}
   // estancia prevista
   const le=norm.match(/length of stay[^0-9]{0,30}?([0-9]+(?:\.[0-9])?)\s*day/i)
         || norm.match(/estancia[^0-9]{0,30}?([0-9]+(?:\.[0-9])?)\s*d[ií]a/i)
@@ -2830,7 +2898,7 @@ function render(){
   ${(function(){const d=dinamometria();if(!d)return "";
     const mano=val("dyn_hand")?" ("+val("dyn_hand").toLowerCase()+")":"";
     const chip=d.clinico&&val("sexo")?` <span class="chip ${d.low?"r-alto":"r-bajo"}">${d.level}</span>`:"";
-    return `<tr><td class="lab">Fuerza de prensión${mano}</td><td colspan="3"><b>${d.v.toFixed(1)} kg</b> · ${esc(d.devName)}${chip}<br><span style="color:#5b6b7a;font-size:10.5px">${esc(d.interp)}</span></td></tr>`;})()}
+    return `<tr><td class="lab">Fuerza de prensión${mano}</td><td colspan="3"><b>${esc(d.disp)}</b> · ${esc(d.devName)}${chip}<br><span style="color:#5b6b7a;font-size:10.5px">${esc(d.interp)}</span></td></tr>`;})()}
   <tr><td class="lab">Estado general</td><td colspan="3">${orDash(val("ef_gen"))}</td></tr>
   <tr><td class="lab">Cabeza y cuello</td><td colspan="3">${orDash(val("ef_cab"))}</td></tr>
   <tr><td class="lab">Tórax</td><td colspan="3">${orDash(val("ef_tor"))}</td></tr>
@@ -2863,10 +2931,32 @@ function render(){
     const manual=SEC_USERSET["acsnsqip"]&&SEC_STATE["acsnsqip"];
     if(!d.filas.length && !d.global && !manual)return "";
     if(!d.filas.length && !d.global)return `<h2>Riesgo quirúrgico ACS-NSQIP</h2><div class="muted">Ingrese los resultados de la calculadora ACS-NSQIP.</div>`;
-    const filas=d.filas.map(f=>`<tr><td>${esc(f.label)}</td><td style="text-align:right"><b>${esc(f.val)}${f.u==="%"?" %":f.u==="días"?" días":""}</b></td></tr>`).join("");
+    const pct=d.filas.filter(f=>f.u==="%");
+    const estancia=d.filas.find(f=>f.u==="días");
+    const CMP={encima:["Por encima","acs-up"],debajo:["Por debajo","acs-down"],igual:["En el promedio","acs-eq"]};
+    const rows=pct.map(f=>{
+      const v=parseFloat(f.val)||0, a=(f.avg!==""&&!isNaN(parseFloat(f.avg)))?parseFloat(f.avg):null;
+      const w=Math.max(0.8,Math.min(100,v));          // escala FIJA 0–100 % (como el reporte ACS)
+      const cls=f.cmp?CMP[f.cmp][1]:"acs-eq";
+      const atick=a!==null?`<span class="acs-avg" style="left:${Math.min(100,a)}%" title="Promedio"></span>`:"";
+      const pill=f.cmp?`<span class="acs-pill ${CMP[f.cmp][1]}">${CMP[f.cmp][0]}</span>`:"—";
+      return `<tr>
+        <td class="acs-name">${esc(f.label)}</td>
+        <td class="acs-barcell"><span class="acs-track"><span class="acs-fill ${cls}" style="width:${w}%"></span>${atick}</span></td>
+        <td class="acs-you">${esc(f.val)} %</td>
+        <td class="acs-avgval">${a!==null?esc(f.avg)+" %":"—"}</td>
+        <td class="acs-cmp">${pill}</td></tr>`;
+    }).join("");
+    const hasAvg=pct.some(f=>f.avg!=="");
+    const axis=`<div class="acs-axis"><span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100%</span></div>`;
     return `<h2>Riesgo quirúrgico ACS-NSQIP</h2>
-    <div class="muted" style="margin-bottom:5px">Estimación de la calculadora ACS-NSQIP (riskcalculator.facs.org)${d.global?` · Riesgo global: <b>${esc(d.global)}</b>`:""}</div>
-    ${filas?`<table class="dm-tbl" style="max-width:420px"><tr><th>Desenlace</th><th style="text-align:right">Riesgo estimado</th></tr>${filas}</table>`:""}`;})()}
+    <div class="muted" style="margin-bottom:6px">Estimación de la calculadora ACS-NSQIP (riskcalculator.facs.org)${d.global?` · Riesgo global: <b>${esc(d.global)}</b>`:""}</div>
+    ${rows?`<table class="acs-tbl"><tr>
+      <th>Desenlace</th><th class="acs-barhd">Riesgo en escala 0–100 %${axis}</th>
+      <th style="text-align:right">Su riesgo</th><th style="text-align:right">Promedio</th><th style="text-align:center">vs. promedio</th></tr>
+      ${rows}</table>`:""}
+    ${estancia?`<div class="acs-foot">Estancia hospitalaria prevista: <b>${esc(estancia.val)} días</b></div>`:""}
+    <div class="acs-leg"><span class="acs-lg-bar"></span> Su riesgo &nbsp;&nbsp; <span class="acs-lg-avg"></span> Promedio de pacientes similares &nbsp;·&nbsp; escala completa 0–100 %, igual que la calculadora ACS.</div>`;})()}
 
   ${(function(){if(!secOn("estudiosind"))return "";
     const L=filtLines("estudiosind",estudiosIndicados());
@@ -3048,7 +3138,14 @@ function render(){
   ${(function(){
     const todas=[...recPre,...recTrans,...recPost];
     if(!todas.length)return '<div class="muted">Sin recomendaciones seleccionadas.</div>';
-    return `<ol class="recs-ol">${todas.map(r=>`<li>${esc(r)}</li>`).join("")}</ol>`;
+    let n=0;
+    const bloque=(titulo,arr)=>{
+      if(!arr.length)return "";
+      const start=n+1; n+=arr.length;
+      return `<div class="rec-fase"><div class="rec-fase-hd">${titulo}</div>`+
+        `<ol class="recs-ol" start="${start}">${arr.map(r=>`<li>${esc(r)}</li>`).join("")}</ol></div>`;
+    };
+    return bloque("Preoperatorias",recPre)+bloque("Transoperatorias",recTrans)+bloque("Postoperatorias",recPost);
   })()}
 
   <div class="sign">
