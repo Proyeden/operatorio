@@ -58,6 +58,15 @@
   .btn-save{background:#fff;color:var(--primary-dark);font-weight:700}
   .btn-save:hover{background:#eefaf9;transform:translateY(-1px)}
   .btn-save.ok{background:#2e7d5b;color:#fff;border-color:#2e7d5b}
+  .acs-in{width:100%;border-collapse:collapse;font-size:12px}
+  .acs-in th{background:#eef5f6;color:var(--primary-dark);font-size:10.5px;font-weight:700;
+       text-align:left;padding:5px 7px;border-bottom:1px solid var(--line)}
+  .acs-in th:nth-child(2),.acs-in th:nth-child(3){text-align:center;width:88px}
+  .acs-in td{padding:3px 7px;border-bottom:1px solid #eef1f3;color:var(--ink)}
+  .acs-in td:first-child{font-size:11.5px}
+  .acs-in input{width:100%;box-sizing:border-box;font-family:inherit;font-size:12px;text-align:center;
+       padding:5px 6px;border:1px solid var(--line);border-radius:5px;background:var(--input)}
+  .acs-in input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(14,124,133,.15);background:#fff}
   .btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
   .btn-ghost:hover{background:rgba(255,255,255,.12)}
   /* ---- Layout ---- */
@@ -393,6 +402,9 @@
     .note .algo, .note .frame, .note .callout{break-inside:avoid!important;page-break-inside:avoid!important}
     /* filas de tabla y renglones no se parten a la mitad */
     .note tr, .note .ri, .note .recs-ol li{break-inside:avoid!important;page-break-inside:avoid!important}
+    /* el encabezado de una tabla no queda solo: se pega a su primera fila de datos */
+    .note .risk-tbl tr:first-child, .note .acs-tbl tr:first-child, .note .dm-tbl tr:first-child,
+    .note .risk-tbl tr:nth-child(2), .note .acs-tbl tr:nth-child(2){break-after:avoid!important;page-break-after:avoid!important}
     .note .recs, .note .recs-ol{orphans:2;widows:2}
     .note .risk-tbl th{background:#12324a!important;color:#fff!important}
     .note .frame{background:#fdf6e6!important}
@@ -781,21 +793,8 @@
       <div class="field" style="margin-top:6px"><label>Opción B — Pegar el texto del resultado</label>
         <textarea id="acs_paste" rows="3" placeholder="En la página de resultados de ACS, seleccione todo (Ctrl+A), copie (Ctrl+C) y pegue aquí; luego toque «Importar»." style="font-size:12px"></textarea></div>
       <button type="button" class="btn-mini" style="margin:0 0 10px" onclick="importarACS()">⇩ Importar texto pegado</button>
-      <div class="grid3">
-        <div class="field"><label>Complicación seria (%)</label><input id="acs_seria" oninput="calc()"></div>
-        <div class="field"><label>Cualquier complicación (%)</label><input id="acs_any" oninput="calc()"></div>
-        <div class="field"><label>Mortalidad (%)</label><input id="acs_death" oninput="calc()"></div>
-        <div class="field"><label>Complicación cardíaca (%)</label><input id="acs_card" oninput="calc()"></div>
-        <div class="field"><label>Neumonía (%)</label><input id="acs_neumo" oninput="calc()"></div>
-        <div class="field"><label>ITU (%)</label><input id="acs_itu" oninput="calc()"></div>
-        <div class="field"><label>Tromboembolismo venoso (%)</label><input id="acs_tev" oninput="calc()"></div>
-        <div class="field"><label>Falla renal (%)</label><input id="acs_renal" oninput="calc()"></div>
-        <div class="field"><label>Infección sitio quirúrgico (%)</label><input id="acs_isq" oninput="calc()"></div>
-        <div class="field"><label>Reingreso (%)</label><input id="acs_reing" oninput="calc()"></div>
-        <div class="field"><label>Reintervención (%)</label><input id="acs_reint" oninput="calc()"></div>
-        <div class="field"><label>Egreso a centro de cuidados (%)</label><input id="acs_egreso" oninput="calc()"></div>
-      </div>
-      <div class="grid2">
+      <div id="acsInputs"></div>
+      <div class="grid2" style="margin-top:8px">
         <div class="field"><label>Estancia prevista (días)</label><input id="acs_estancia" oninput="calc()"></div>
         <div class="field"><label>Riesgo global (texto libre: bajo/promedio/alto)</label><input id="acs_global" oninput="calc()"></div>
       </div>
@@ -2358,9 +2357,30 @@ function normCmp(s){s=(s||"").toLowerCase();
   if(/below|debajo/.test(s))return "debajo";
   return "igual";}
 function acsMeta(){try{return JSON.parse(val("acs_meta")||"{}");}catch(e){return {};}}
+// Construye la tabla de entrada (Su riesgo / Promedio) para cada desenlace en %
+function buildACSInputs(){
+  const box=document.getElementById("acsInputs"); if(!box)return;
+  const rows=ACS_CAMPOS.filter(c=>c[2]==="%").map(([id,label])=>
+    `<tr><td>${label}</td>
+     <td><input id="${id}" inputmode="decimal" oninput="calc()" placeholder="—"></td>
+     <td><input id="${id}_avg" inputmode="decimal" oninput="calc()" placeholder="—"></td></tr>`).join("");
+  box.innerHTML=`<table class="acs-in"><tr><th>Desenlace</th><th>Su riesgo (%)</th><th>Promedio (%)</th></tr>${rows}</table>`;
+}
 function acsDatos(){
   const out=[]; const meta=acsMeta();
-  ACS_CAMPOS.forEach(([id,label,u])=>{const v=val(id);if(v){const m=meta[id]||{};out.push({id,label,val:v,u,avg:m.avg||"",cmp:m.cmp||""});}});
+  ACS_CAMPOS.forEach(([id,label,u])=>{
+    const v=val(id); if(!v)return;
+    let avg="", cmp="";
+    if(u==="%"){
+      avg=val(id+"_avg");
+      cmp=(meta[id]&&meta[id].cmp)||"";               // 1º la comparación leída del PDF (banda estadística de ACS)
+      if(!cmp && avg!==""){                            // 2º si no hay, se calcula de los números con banda muerta
+        const dv=parseFloat(v), da=parseFloat(avg);
+        if(!isNaN(dv)&&!isNaN(da)){const diff=dv-da; cmp=Math.abs(diff)<0.15?"igual":(diff>0?"encima":"debajo");}
+      }
+    }
+    out.push({id,label,val:v,u,avg,cmp});
+  });
   const g=val("acs_global"); // riesgo global texto
   return {filas:out, global:g};
 }
@@ -2426,10 +2446,8 @@ function importarACS(){
     const m=norm.match(rx);
     if(m){
       const el=document.getElementById(id);if(el)el.value=m[1];n++;
-      const info={};
-      if(m[2])info.avg=m[2];
-      if(m[3])info.cmp=normCmp(m[3]);
-      if(m[2]||m[3])meta[id]=info;
+      if(m[2]){const ea=document.getElementById(id+"_avg");if(ea)ea.value=m[2];}  // promedio → campo real (persistente)
+      if(m[3])meta[id]={cmp:normCmp(m[3])};                                        // comparación de ACS → meta
     }
   });
   try{const mel=document.getElementById("acs_meta");if(mel)mel.value=JSON.stringify(meta);}catch(e){}
@@ -3978,7 +3996,7 @@ if(FB.ready){
 }
 
 /* ================= INIT ================= */
-buildTipos();buildScores();buildRecBank();buildSecToggles();
+buildTipos();buildScores();buildRecBank();buildSecToggles();buildACSInputs();
 (function(){
   let restored=false;
   try{const saved=localStorage.getItem("preop_current");
