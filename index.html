@@ -55,6 +55,9 @@
   .btn-word:hover{background:#eefaf9;transform:translateY(-1px)}
   .btn-pdf{background:linear-gradient(135deg,#e8873c,#d9752b);color:#fff}
   .btn-pdf:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .btn-save{background:#fff;color:var(--primary-dark);font-weight:700}
+  .btn-save:hover{background:#eefaf9;transform:translateY(-1px)}
+  .btn-save.ok{background:#2e7d5b;color:#fff;border-color:#2e7d5b}
   .btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
   .btn-ghost:hover{background:rgba(255,255,255,.12)}
   /* ---- Layout ---- */
@@ -332,7 +335,7 @@
     .note-hd{padding:16px 22px 14px;border-bottom:4px solid #e8873c!important;
          background:#0e6b73!important;color:#fff!important}
     .note-hd .kicker,.note-hd h1,.note-hd .sub{color:#fff!important}
-    .note-body{padding:0 16mm}
+    .note-body{padding:0}
     .note h2{margin:16px 0 7px;background:#e6f3f3!important;border-left:4px solid #0e7c85!important;
          color:#0a5157!important;
          break-after:avoid!important;page-break-after:avoid!important;break-inside:avoid!important}
@@ -355,10 +358,38 @@
     .r-bajo{background:#e3f2e8!important}.r-medio{background:#fdf1dc!important}
     .r-alto{background:#fbe4e0!important}.r-na{background:#eef1f4!important}
     .note .rec-block-hd{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-    .note{padding-bottom:14mm!important}
-    /* margen de página 0 → el navegador deja de imprimir su encabezado/pie (URL, fecha, título) */
-    @page{margin:0}
+    .note{padding-bottom:0!important}
+    /* Hoja tamaño carta con márgenes reales para que no se corte el contenido */
+    @page{size:Letter;margin:14mm 14mm 14mm 14mm}
+    #loginGate{display:none!important}
   }
+  /* ===== Pantalla de inicio (login gate) ===== */
+  #loginGate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,#0e7c85,#0a5157 60%,#12324a);padding:20px;overflow:auto}
+  #loginGate .gate-card{background:#fff;border-radius:16px;max-width:400px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);padding:30px 28px;box-sizing:border-box}
+  #loginGate .gate-brand{text-align:center;margin-bottom:18px}
+  #loginGate .gate-brand .gi{width:54px;height:54px;border-radius:14px;margin:0 auto 10px;
+    background:linear-gradient(145deg,#0e7c85,#0a5157);display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:26px}
+  #loginGate h2{margin:0 0 2px;font-size:19px;color:var(--navy);font-weight:800}
+  #loginGate .gate-sub{font-size:12.5px;color:var(--muted);margin:0}
+  #loginGate .gate-field{margin-top:14px}
+  #loginGate .gate-field label{display:block;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:5px}
+  #loginGate .gate-field input{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;
+    padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:#f7fafb;color:var(--ink)}
+  #loginGate .gate-field input:focus{outline:none;border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(14,124,133,.15);background:#fff}
+  #loginGate .gate-btn{width:100%;margin-top:18px;padding:12px;border:none;border-radius:8px;
+    background:var(--primary);color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:.15s}
+  #loginGate .gate-btn:hover{background:var(--primary-dark)}
+  #loginGate .gate-btn:disabled{opacity:.6;cursor:default}
+  #loginGate .gate-link{display:block;text-align:center;margin-top:14px;font-size:12.5px;
+    color:var(--primary-dark);cursor:pointer;text-decoration:underline}
+  #loginGate .gate-msg{margin-top:12px;font-size:12.5px;min-height:16px;text-align:center;color:#c0392b}
+  #loginGate .gate-foot{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:11px;color:var(--muted);text-align:center;line-height:1.5}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -382,14 +413,42 @@
 </script>
 </head>
 <body>
+<!-- ================= PANTALLA DE INICIO (login obligatorio) ================= -->
+<div id="loginGate">
+  <div class="gate-card">
+    <div class="gate-brand">
+      <div class="gi">🩺</div>
+      <h2>Valoración Preoperatoria</h2>
+      <p class="gate-sub">Acceso restringido · inicie sesión para continuar</p>
+    </div>
+    <div class="gate-field">
+      <label for="gateEmail">Correo</label>
+      <input id="gateEmail" type="email" autocomplete="username" placeholder="usuario@correo.com"
+        onkeydown="if(event.key==='Enter'){document.getElementById('gatePass').focus();}">
+    </div>
+    <div class="gate-field">
+      <label for="gatePass">Contraseña</label>
+      <input id="gatePass" type="password" autocomplete="current-password" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')gateLogin();">
+    </div>
+    <button id="gateBtn" class="gate-btn" onclick="gateLogin()">Ingresar</button>
+    <span class="gate-link" onclick="gateReset()">¿Olvidó su contraseña?</span>
+    <div id="gateMsg" class="gate-msg"></div>
+    <div class="gate-foot">
+      El uso de esta herramienta y de los datos de pacientes requiere autorización.
+      Al ingresar, su sesión queda vinculada a la nube para respaldo y sincronización.
+    </div>
+  </div>
+</div>
 <header class="topbar">
   <h1>Valoración Preoperatoria <span class="tag">Cirugía no cardíaca</span></h1>
   <div class="actions">
     <span id="status" class="status"></span>
-    <span id="saveState" class="save-state" onclick="saveToLibrary()" title="Clic para guardar en la biblioteca"></span>
+    <span id="saveState" class="save-state" onclick="quickSave()" title="Clic para guardar los cambios"></span>
+    <button class="btn btn-save" id="btnQuickSave" onclick="quickSave()" title="Guardar los cambios del paciente actual (también sube a la nube)">💾 Guardar</button>
     <button class="btn btn-ghost" id="accountBtn" onclick="openAuthModal()">Cuenta</button>
     <button class="btn btn-ghost" onclick="newPatient()">Nuevo</button>
-    <button class="btn btn-ghost" onclick="saveToLibrary()">Guardar paciente</button>    <button class="btn btn-ghost" onclick="openLibraryModal()">Abrir paciente</button>
+    <button class="btn btn-ghost" onclick="openLibraryModal()">Abrir paciente</button>
     <button class="btn btn-ghost" onclick="openFirmaModal()">Firmar y sellar</button>
     <button class="btn btn-pdf" onclick="window.print()">Imprimir / PDF</button>
     <button class="btn btn-word" onclick="downloadWord()">Descargar Word</button>
@@ -3232,6 +3291,32 @@ function saveToLibrary(){
   markSaved();
   setStatus(FB.user?"Paciente guardado ☁":"Paciente guardado ✓");
 }
+// Guardado rápido (botón diskette): actualiza el paciente actual sin preguntar,
+// pensado para presionarlo cuantas veces se quiera mientras se trabaja.
+function quickSave(){
+  const nombre=val("nombre").trim();
+  if(!nombre){ setStatus("Escriba el nombre del paciente para guardar"); return; }
+  const fechaEval=val("fecha")||new Date().toISOString().slice(0,10);
+  const lib=getLibrary();
+  const id=slug(nombre)+"__"+fechaEval;
+  const rec={id,nombre,fechaEval,savedAt:new Date().toISOString(),data:collectData()};
+  const idx=lib.findIndex(r=>r.id===id);
+  if(idx>=0) lib[idx]=rec; else lib.push(rec);
+  setLibrary(lib);
+  updateBackupInfo();
+  pushPaciente(rec);
+  markSaved();
+  setStatus(FB.user?"Guardado ☁":"Guardado ✓");
+  flashSaveBtn();
+}
+function flashSaveBtn(){
+  const b=document.getElementById("btnQuickSave");
+  if(!b)return;
+  const prev=b.innerHTML;
+  b.classList.add("ok"); b.innerHTML="✓ Guardado";
+  clearTimeout(b._t);
+  b._t=setTimeout(()=>{b.classList.remove("ok");b.innerHTML=prev;},1400);
+}
 function fmtDate(iso){try{return new Date(iso).toLocaleString("es-GT",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return iso;}}
 
 function openLibraryModal(){document.getElementById("libModal").classList.add("open");document.getElementById("libSearch").value="";renderLibrary();updateBackupInfo();}
@@ -3619,6 +3704,41 @@ async function resetPwd(){
 }
 
 /* ================= FIREBASE: AUTH + SINCRONIZACIÓN ================= */
+/* ---- Pantalla de inicio obligatoria ---- */
+function showGate(){const g=document.getElementById("loginGate");if(g)g.style.display="flex";}
+function hideGate(){const g=document.getElementById("loginGate");if(g)g.style.display="none";}
+function gateMsg(txt,ok){const m=document.getElementById("gateMsg");if(!m)return;m.style.color=ok?"#2e7d5b":"#c0392b";m.textContent=txt||"";}
+function gateLogin(){
+  if(!FB.ready){gateMsg("Se requiere conexión a Internet para iniciar sesión. Revise su conexión.");return;}
+  const email=(val("gateEmail")||"").trim(), pass=val("gatePass")||"";
+  if(!email||!pass){gateMsg("Ingrese correo y contraseña.");return;}
+  const btn=document.getElementById("gateBtn");
+  btn.disabled=true; gateMsg("Conectando…",true);
+  FB.auth.signInWithEmailAndPassword(email,pass)
+    .then(()=>{ document.getElementById("gatePass").value=""; gateMsg(""); })
+    .catch(e=>{
+      btn.disabled=false;
+      if(e.code==="auth/user-not-found"){
+        if(confirm("No existe una cuenta con ese correo. ¿Crear una cuenta nueva con estas credenciales?\n\nSolo hágalo si es la primera vez que configura su acceso.")){
+          gateMsg("Creando cuenta…",true); btn.disabled=true;
+          FB.auth.createUserWithEmailAndPassword(email,pass)
+            .then(()=>{document.getElementById("gatePass").value="";gateMsg("");})
+            .catch(e2=>{btn.disabled=false;gateMsg(traducirAuthError(e2));});
+        } else gateMsg("");
+      } else {
+        gateMsg(traducirAuthError(e));
+      }
+    });
+}
+function gateReset(){
+  if(!FB.ready){gateMsg("Se requiere conexión a Internet.");return;}
+  const email=(val("gateEmail")||"").trim();
+  if(!email){gateMsg("Escriba su correo arriba y vuelva a tocar el enlace.");return;}
+  FB.auth.sendPasswordResetEmail(email)
+    .then(()=>gateMsg("Se envió un correo para restablecer la contraseña.",true))
+    .catch(e=>gateMsg(traducirAuthError(e)));
+}
+
 function openAuthModal(){document.getElementById("authModal").classList.add("open");refreshAuthModal();}
 function closeAuthModal(){document.getElementById("authModal").classList.remove("open");}
 function refreshAuthModal(){
@@ -3745,11 +3865,19 @@ if(FB.ready){
     updateAccountBtn();
     refreshAuthModal();
     if(user){
+      hideGate();               // ya autenticado → mostrar la app
+      const b=document.getElementById("gateBtn"); if(b)b.disabled=false;
       setStatus("Sesión iniciada ☁");
       await pullFirmaAssets();  // trae firma y sello de la nube
       await syncNow();          // sincroniza pacientes
+    } else {
+      showGate();               // sin sesión → bloquear la app
     }
   });
+}else{
+  // Firebase no cargó (sin conexión en el primer arranque): mantener bloqueo y avisar
+  showGate();
+  gateMsg("Se requiere conexión a Internet para el primer inicio de sesión.");
 }
 
 /* ================= INIT ================= */
