@@ -552,16 +552,29 @@
   .inst-row button{font-size:11px;font-weight:600;border:1px solid var(--line);background:#fff;color:#96341f;border-radius:5px;padding:4px 9px;cursor:pointer}
   .inst-row button:hover{background:#fbe4e0}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-  /* ===== MODO PERSONAL (local, sin login ni nube) =====
-     Uso propio del Dr. Cotzojay. Sin Firebase, sin prueba ni paywall.
-     Todos los datos (pacientes, firma, perfil) se guardan localmente en este navegador. */
-  let FB={
-    ready:false,
-    user:{uid:"local", email:"local"},
-    db:null,
-    auth:{currentUser:{uid:"local"}, signOut(){return Promise.resolve();}, onAuthStateChanged(){}}
+  /* ===== USO PERSONAL con sincronización en la nube (cuenta del Dr. Cotzojay) =====
+     Inicia sesión una vez por equipo; los pacientes se guardan en tu Firestore privado
+     (proyecto preop-f136d) y aparecen en cualquier equipo donde inicies sesión.
+     Sin prueba ni paywall: acceso total. */
+  const firebaseConfig = {
+    apiKey: "AIzaSyCVBHIC0iNuaRtnqCrgakPpHkF2N9Vs884",
+    authDomain: "preop-f136d.firebaseapp.com",
+    projectId: "preop-f136d",
+    storageBucket: "preop-f136d.firebasestorage.app",
+    messagingSenderId: "698348026655",
+    appId: "1:698348026655:web:8232e41035e5332b11ce2a"
   };
+  let FB={ready:false, user:null, db:null, auth:null};
+  try{
+    firebase.initializeApp(firebaseConfig);
+    FB.auth=firebase.auth();
+    FB.db=firebase.firestore();
+    FB.ready=true;
+  }catch(e){ console.log("Firebase no disponible:",e); }
 
   /* ======= CONFIGURACIÓN DE LICENCIAS (edítala) =======
      1) ADMIN_UID: tu UID de administrador. Inicia sesión, abre «Cuenta» y
@@ -728,6 +741,8 @@
       <button class="btn btn-ghost menu-btn" id="btnPerfil" onclick="toggleMenu('menuPerfil',event)">👤 Perfil ▾</button>
       <div class="menu-pop">
         <button class="menu-item" onclick="menuDo(openFirmaModal)">🖊 Logo, firma y sello</button>
+        <div class="menu-sep"></div>
+        <button class="menu-item" onclick="menuDo(authLogout)">↩ Cerrar sesión</button>
       </div>
     </div>
 
@@ -4176,7 +4191,7 @@ async function resetPwd(){
 
 /* ================= FIREBASE: AUTH + SINCRONIZACIÓN ================= */
 /* ---- Pantalla de inicio obligatoria ---- */
-function showGate(){const g=document.getElementById("loginGate");if(g)g.style.display="none";} /* MODO PERSONAL: nunca mostrar login */
+function showGate(){const g=document.getElementById("loginGate");if(g)g.style.display="flex";}
 function hideGate(){const g=document.getElementById("loginGate");if(g)g.style.display="none";}
 function gateMsg(txt,ok){const m=document.getElementById("gateMsg");if(!m)return;m.style.color=ok?"#2e7d5b":"#c0392b";m.textContent=txt||"";}
 function gateLogin(){
@@ -4628,18 +4643,56 @@ async function syncNow(){
 function setSyncInfo(txt){const el=document.getElementById("syncInfo");if(el)el.textContent=txt;}
 
 // Los datos de pacientes se guardan SOLO en este dispositivo (no en la nube).
-async function pushPaciente(rec){ setStatus("Guardado ✓"); }
-async function deletePacienteRemoto(id){ /* datos locales: nada que borrar en la nube */ }
+async function pushPaciente(rec){
+  setStatus("Guardado ✓");
+  if(!FB||!FB.user||!FB.db||!rec||!rec.id) return;
+  try{ await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(rec.id).set(rec); }
+  catch(e){ console.warn("sync subir:",e); }
+}
+async function deletePacienteRemoto(id){
+  if(!FB||!FB.user||!FB.db||!id) return;
+  try{ await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(id).delete(); }
+  catch(e){ console.warn("sync borrar:",e); }
+}
+// Trae los pacientes de la nube y los fusiona con los locales (por id; conserva el más reciente).
+async function pullPacientes(){
+  if(!FB||!FB.user||!FB.db) return;
+  try{
+    const snap=await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").get();
+    const remotos=[]; snap.forEach(d=>{ const r=d.data(); if(r&&r.id) remotos.push(r); });
+    const local=getLibrary();
+    const porId={};
+    local.forEach(r=>{ if(r&&r.id) porId[r.id]=r; });
+    remotos.forEach(r=>{ const ex=porId[r.id]; if(!ex || (r.savedAt||"")>=(ex.savedAt||"")) porId[r.id]=r; });
+    setLibrary(Object.values(porId));
+    // subir los que solo existían localmente (equipo nuevo, o creados sin conexión)
+    const idsRemotos=new Set(remotos.map(r=>r.id));
+    for(const r of local){ if(r&&r.id&&!idsRemotos.has(r.id)){ try{ await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(r.id).set(r); }catch(e){} } }
+    try{ updateBackupInfo(); }catch(e){}
+  }catch(e){ console.warn("sync cargar:",e); }
+}
 
-// MODO PERSONAL: sin login. Se abre la app directamente, con acceso total y datos locales.
-(function arranqueLocal(){
-  try{ FB.user={uid:"local", email:"local"}; ENTITLED=true; }catch(e){}
-  try{ hideGate(); }catch(e){}
-  try{ if(typeof hideLicenseGate==="function") hideLicenseGate(); }catch(e){}
-  try{ if(typeof hideTrialBar==="function") hideTrialBar(); }catch(e){}
-  try{ updateAccountBtn(); }catch(e){}
-  try{ pullPerfil && pullPerfil(); }catch(e){}
-})();
+// USO PERSONAL con nube: el login identifica al usuario y sincroniza sus pacientes.
+if(FB.ready){
+  FB.auth.onAuthStateChanged(async function(user){
+    FB.user=user;
+    try{ updateAccountBtn(); }catch(e){}
+    if(user){
+      ENTITLED=true;                 // acceso total (sin prueba ni paywall)
+      try{ hideGate(); }catch(e){}
+      try{ if(typeof hideTrialBar==="function") hideTrialBar(); }catch(e){}
+      try{ await pullFirmaAssets(); }catch(e){}
+      try{ if(typeof pullPerfil==="function") await pullPerfil(); }catch(e){}
+      try{ await pullPacientes(); }catch(e){}   // sincroniza pacientes desde la nube
+      try{ render(); }catch(e){}
+    }else{
+      try{ showGate(); }catch(e){}    // sin sesión → pedir login
+    }
+  });
+}else{
+  // Sin Firebase (sin conexión): modo local para no quedar bloqueado; no sincroniza.
+  try{ FB.user=null; ENTITLED=true; hideGate(); }catch(e){}
+}
 
 /* ================= INIT ================= */
 buildTipos();buildScores();buildRecBank();buildSecToggles();buildACSInputs();
