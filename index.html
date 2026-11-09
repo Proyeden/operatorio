@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Valoración Preoperatoria — Cirugía No Cardíaca</title>
+<title>Aptus Preop — Valoración preoperatoria</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2312a0a8'/%3E%3Cstop offset='1' stop-color='%230a5157'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='15' fill='url(%23g)'/%3E%3Cpath d='M12 36 H21 L26 25 L31 42 L50 16' stroke='white' stroke-width='5.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='50' cy='16' r='4.2' fill='%23e8873c'/%3E%3C/svg%3E">
 <style>
   :root{
     --ink:#16252f; --muted:#5f7180; --line:#dde5ea; --bg:#e8eef2; --card:#fff;
@@ -35,6 +36,18 @@
   header.topbar h1 .tag{font-weight:400;font-size:11px;background:rgba(255,255,255,.15);
        padding:2px 8px;border-radius:10px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+  .menu{position:relative;display:inline-block}
+  .menu-btn{display:inline-flex;align-items:center;gap:4px}
+  .menu.open > .menu-btn{background:rgba(255,255,255,.3)}
+  .menu-pop{position:absolute;right:0;top:calc(100% + 6px);min-width:212px;background:#fff;
+       border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(10,30,40,.2);
+       padding:6px;display:none;z-index:70}
+  .menu.open .menu-pop{display:block}
+  .menu-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+       background:transparent;border:0;border-radius:7px;padding:9px 11px;font-size:13px;
+       font-weight:500;color:#13343f;cursor:pointer;white-space:nowrap;font-family:inherit}
+  .menu-item:hover{background:var(--teal-soft)}
+  .menu-sep{height:1px;background:var(--line);margin:5px 4px}
   .status{font-size:11px;color:rgba(255,255,255,.85);font-style:italic;min-width:70px;text-align:right}
   .save-state{font-size:11px;font-weight:700;padding:4px 11px;border-radius:12px;cursor:pointer;
        display:inline-flex;align-items:center;gap:5px;white-space:nowrap;transition:.15s;user-select:none}
@@ -203,6 +216,10 @@
   .sysacc-car{font-size:11px;color:var(--primary);width:12px;flex:0 0 auto;transition:transform .15s}
   .sysacc-dot{width:8px;height:8px;border-radius:50%;background:transparent;margin-left:auto;flex:0 0 auto}
   .sysacc.active .sysacc-dot{background:#2e9e5b}
+  .nsqip-steps{display:flex;flex-direction:column;gap:12px}
+  .nsqip-step{display:flex;gap:10px;align-items:flex-start}
+  .nsqip-num{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin-top:1px}
   .sysacc.active .sysacc-head{color:var(--primary-dark)}
   .sysacc-body{padding:8px 11px 10px}
   /* secciones expandibles */
@@ -359,7 +376,13 @@
   .note .sign-sello{max-height:74px;max-width:220px;object-fit:contain;opacity:.92}
   .fm-prev{border:1px dashed var(--line);border-radius:8px;min-height:78px;display:flex;
        align-items:center;justify-content:center;background:#fafcfc;padding:6px}
+  /* fondo a cuadros para ver la transparencia del logo */
+  .fm-prev-logo{background:
+     linear-gradient(45deg,#eceff1 25%,transparent 25%,transparent 75%,#eceff1 75%),
+     linear-gradient(45deg,#eceff1 25%,#fff 25%,#fff 75%,#eceff1 75%);
+     background-size:16px 16px;background-position:0 0,8px 8px}
   .fm-empty{font-size:11px;color:var(--muted);font-style:italic}
+  .fm-req{font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:6px}
   .note .sign .line{border-top:1px solid #34434f;width:230px;margin:0 auto 5px}
   .note .sign .nm{font-weight:700;font-size:12.5px;color:#17324d}
   .note .sign .sm{font-size:10.5px;color:#5b6b7a}
@@ -369,10 +392,17 @@
   .preview-label{max-width:760px;margin:0 auto 8px;font-size:11px;color:#5b6b7a;
        text-transform:uppercase;letter-spacing:.05em;font-weight:700}
   /* ---- Print ---- */
+  .print-foot{display:none}
   @media print{
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
     html,body{background:#fff!important}
     header.topbar,.form-pane,.preview-label{display:none!important}
+    .print-foot{display:flex!important;justify-content:space-between;align-items:flex-end;gap:14px;
+      position:fixed;left:0;right:0;bottom:0;
+      font-size:9px;line-height:1.25;color:#555;background:#fff!important;
+      border-top:1px solid #cdd7d7;padding:2mm 1mm 1mm}
+    .print-foot .pf-left{text-align:left}
+    .print-foot .pf-right{text-align:right;font-weight:600}
     .wrap{display:block;background:#fff!important}
     .preview-pane{position:static!important;height:auto!important;overflow:visible!important;
          background:#fff!important;background-image:none!important;padding:0!important;border:none!important}
@@ -417,8 +447,20 @@
     .r-alto{background:#fbe4e0!important}.r-na{background:#eef1f4!important}
     .note .rec-block-hd{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
     .note{padding-bottom:0!important}
+    /* ---- Impresión compacta: menos hojas sin perder legibilidad ---- */
+    .note-hd{padding:10px 20px 9px!important}
+    .note-hd h1{font-size:17px!important}
+    .note-hd .kicker{font-size:8.5px!important;margin-bottom:1px!important}
+    .note-hd .sub{margin-top:6px!important;padding-top:6px!important;font-size:10px!important}
+    .note h2{margin:9px 0 5px!important}
+    .note .frame{margin:8px 0!important;padding:7px 12px 7px 32px!important;font-size:9px!important}
+    .note td{padding-top:2.5px!important;padding-bottom:2.5px!important}
+    .note .ri{margin:2px 0!important}
+    .note .recs-ol li{margin-bottom:2px!important}
+    .note .sign{margin-top:16px!important}
+    .note .ref{margin-top:12px!important;padding-top:7px!important;font-size:7.5px!important;line-height:1.35!important}
     /* Hoja tamaño carta con márgenes reales para que no se corte el contenido */
-    @page{size:Letter;margin:14mm 14mm 14mm 14mm}
+    @page{size:Letter;margin:14mm 14mm 18mm 14mm}
     #loginGate{display:none!important}
   }
   /* ===== Pantalla de inicio (login gate) ===== */
@@ -448,26 +490,117 @@
   #loginGate .gate-msg{margin-top:12px;font-size:12.5px;min-height:16px;text-align:center;color:#c0392b}
   #loginGate .gate-foot{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
     font-size:11px;color:var(--muted);text-align:center;line-height:1.5}
+  /* ===== Bloqueo por membresía (reusa estilos de .gate-card dentro de #loginGate) ===== */
+  #licenseGate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,#12324a,#0a5157 60%,#0e7c85);padding:20px;overflow:auto}
+  #licenseGate .gate-card{background:#fff;border-radius:16px;max-width:420px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);padding:28px 26px;box-sizing:border-box}
+  #licenseGate .gate-brand{text-align:center;margin-bottom:12px}
+  #licenseGate .gate-brand .gi{width:54px;height:54px;border-radius:14px;margin:0 auto 10px;
+    background:linear-gradient(145deg,#12324a,#0a5157);display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:26px}
+  #licenseGate h2{margin:0 0 2px;font-size:19px;color:var(--navy);font-weight:800}
+  #licenseGate .gate-sub{font-size:12.5px;color:var(--muted);margin:0}
+  #licenseGate .gate-btn{width:100%;margin-top:16px;padding:12px;border:none;border-radius:8px;
+    background:var(--primary);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  #licenseGate .gate-btn:hover{background:var(--primary-dark)}
+  #licenseGate .gate-link{display:block;text-align:center;margin-top:12px;font-size:12.5px;
+    color:var(--primary-dark);cursor:pointer;text-decoration:underline}
+  #licenseGate .gate-msg{margin-top:10px;font-size:12.5px;min-height:16px;text-align:center;color:#c0392b}
+  .lic-contacto{margin-top:14px;padding:12px;border-radius:10px;background:#f2f7f7;border:1px solid #d9e7e7;
+    font-size:13px;text-align:center;line-height:1.7}
+  .lic-contacto a{color:var(--primary-dark);font-weight:700;text-decoration:none}
+  /* ===== Panel de administración ===== */
+  .adm-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);
+    border-radius:8px;margin-bottom:8px;flex-wrap:wrap}
+  .adm-mail{font-weight:700;font-size:13px;color:var(--ink);flex:1 1 180px;min-width:0;word-break:break-all}
+  .adm-state{font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap}
+  .adm-state.ok{background:#e3f2e8;color:#255e40}
+  .adm-state.no{background:#fbe4e0;color:#96341f}
+  .adm-state.pend{background:#fdf1dc;color:#7a5a12}
+  .adm-acts{display:flex;gap:5px;flex-wrap:wrap}
+  .adm-acts button{font-size:11px;font-weight:600;border:1px solid var(--line);background:#fff;
+    color:var(--primary-dark);border-radius:5px;padding:4px 8px;cursor:pointer}
+  .adm-acts button:hover{background:var(--teal-soft)}
+  .adm-acts button.danger{color:#96341f}
+  .adm-acts button.danger:hover{background:#fbe4e0}
+  /* ===== Banner de prueba ===== */
+  #trialBar{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+    background:linear-gradient(100deg,#fff6e8,#fdeedb);border-bottom:1px solid #f0d9b3;
+    padding:7px 16px;font-size:12.5px;color:#7a5a12;font-weight:600}
+  #trialBar button{background:var(--accent);color:#fff;border:none;border-radius:6px;
+    padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+  #trialBar button:hover{filter:brightness(1.05)}
+  #trialBar.full{background:linear-gradient(100deg,#fdeae4,#fbe0d9);border-color:#f0bfb0;color:#96341f}
+  @media print{#trialBar{display:none!important}}
+  /* ===== Planes en el paywall ===== */
+  .plan{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .plan-info{min-width:0}
+  .plan-nombre{font-weight:800;font-size:14px;color:var(--navy)}
+  .plan-precio{font-size:13px;color:var(--ink)}
+  .plan-nota{font-size:11px;color:#255e40;font-weight:700}
+  .plan-btn{background:var(--primary);color:#fff;border:none;border-radius:7px;padding:9px 16px;
+    font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;display:inline-block}
+  .plan-btn:hover{background:var(--primary-dark)}
+  .pw-grupo{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--primary-dark);
+    margin:12px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .pw-grupo:first-child{margin-top:0}
+  /* Panel de institución */
+  .inst-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;margin-bottom:7px}
+  .inst-mail{flex:1;font-size:13px;color:var(--ink);word-break:break-all}
+  .inst-row button{font-size:11px;font-weight:600;border:1px solid var(--line);background:#fff;color:#96341f;border-radius:5px;padding:4px 9px;cursor:pointer}
+  .inst-row button:hover{background:#fbe4e0}
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCVBHIC0iNuaRtnqCrgakPpHkF2N9Vs884",
-    authDomain: "preop-f136d.firebaseapp.com",
-    projectId: "preop-f136d",
-    storageBucket: "preop-f136d.firebasestorage.app",
-    messagingSenderId: "698348026655",
-    appId: "1:698348026655:web:8232e41035e5332b11ce2a"
+  /* ===== MODO PERSONAL (local, sin login ni nube) =====
+     Uso propio del Dr. Cotzojay. Sin Firebase, sin prueba ni paywall.
+     Todos los datos (pacientes, firma, perfil) se guardan localmente en este navegador. */
+  let FB={
+    ready:false,
+    user:{uid:"local", email:"local"},
+    db:null,
+    auth:{currentUser:{uid:"local"}, signOut(){return Promise.resolve();}, onAuthStateChanged(){}}
   };
-  let FB={ready:false, user:null, db:null, auth:null};
-  try{
-    firebase.initializeApp(firebaseConfig);
-    FB.auth=firebase.auth();
-    FB.db=firebase.firestore();
-    FB.ready=true;
-  }catch(e){ console.log("Firebase no disponible:",e); }
+
+  /* ======= CONFIGURACIÓN DE LICENCIAS (edítala) =======
+     1) ADMIN_UID: tu UID de administrador. Inicia sesión, abre «Cuenta» y
+        copia el UID que aparece ahí; pégalo aquí entre comillas.
+     2) CONTACTO: cómo te contactan los médicos para activar/renovar. */
+  const ADMIN_UID = "FWkJCa13WQPUb8ujjmw9ahgr7Jx2";
+  const CONTACTO = {
+    whatsapp: "502 0000 0000",            // tu número de WhatsApp
+    wa_link:  "https://wa.me/50200000000",// enlace directo (tu número con código país)
+    correo:   "proyectosdeniscp@gmail.com"
+  };
+  // Planes. El cobro es automático vía Recurrente (Cloud Function).
+  // "id" debe coincidir con el plan en functions/index.js (mensual/anual).
+  // "link" solo se usa como respaldo si no hay FUNCTIONS_BASE configurada.
+  const PLANES = [
+    {id:"ind_mensual", grupo:"individual",    nombre:"Mensual", precio:"$15 / mes",   precioUSD:"$15 / mes",  nota:""},
+    {id:"ind_anual",   grupo:"individual",    nombre:"Anual",   precio:"$150 / año",  precioUSD:"$150 / año", nota:"2 meses gratis"},
+    {id:"inst_mensual",grupo:"institucional", nombre:"Mensual", precio:"$35 / mes",   precioUSD:"$35 / mes",  nota:""},
+    {id:"inst_anual",  grupo:"institucional", nombre:"Anual",   precio:"$350 / año",  precioUSD:"$350 / año", nota:"2 meses gratis"}
+  ];
+  const GRUPOS = {individual:"Individual · 1 médico", institucional:"Institucional · hasta 3 médicos"};
+  // Las funciones se sirven en el MISMO dominio vía Hosting rewrites (ver firebase.json),
+  // bajo /api. No necesitas cambiar esto. (Déjalo vacío solo para desactivar el pago automático.)
+  const FUNCTIONS_BASE = "/api";
+  // PayPal (pagos internacionales). Client-id público de PayPal y plan_id por plan.
+  // Deja PAYPAL_CLIENT_ID vacío para ocultar PayPal.
+  const PAYPAL_CLIENT_ID = "BAA798EZeQL5_TZHiniXyQE7aGZWTGC_rYlBLTgGZFEue0qEecZWvLSaa6VmcxBIF4zh0LMlkPtZjt1r0Q";
+  const PAYPAL_PLANS = {
+    ind_mensual:"P-48204295215090940NLSWVZQ",
+    ind_anual:"P-9JF49941M84544405NLSWWXQ",
+    inst_mensual:"P-14K109126G910263LNLSWXKA",
+    inst_anual:"P-2WU36188MJ673841VNLSWYCY"
+  };
+  const TRIAL_LIMIT = 2;   // pacientes gratis en modo prueba
+  let MEMBRESIA = "";      // fecha de vencimiento vigente (para mostrar)
+  let MI_PLAN = "";        // ind_mensual | ind_anual | inst_mensual | inst_anual
+  let MI_ROL = "";         // individual | titular | miembro
+  let ENTITLED = true;     // MODO PERSONAL: acceso total siempre (sin prueba ni paywall)
+  let USO_IDS = [];        // ids de pacientes ya contados en la prueba
 </script>
 </head>
 <body>
@@ -475,8 +608,8 @@
 <div id="loginGate">
   <div class="gate-card">
     <div class="gate-brand">
-      <div class="gi">🩺</div>
-      <h2>Valoración Preoperatoria</h2>
+      <div class="gi"><svg viewBox="0 0 64 64" fill="none" style="width:62%;height:62%"><path d="M12 36 H21 L26 25 L31 42 L50 16" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="50" cy="16" r="4.4" fill="#e8873c"/></svg></div>
+      <h2>Aptus Preop</h2>
       <p class="gate-sub">Acceso restringido · inicie sesión para continuar</p>
     </div>
     <div class="gate-field">
@@ -493,25 +626,119 @@
     <span class="gate-link" onclick="gateReset()">¿Olvidó su contraseña?</span>
     <div id="gateMsg" class="gate-msg"></div>
     <div class="gate-foot">
-      El uso de esta herramienta y de los datos de pacientes requiere autorización.
-      Al ingresar, su sesión queda vinculada a la nube para respaldo y sincronización.
+      Acceso por suscripción. Los datos de los pacientes se guardan en este dispositivo;
+      el inicio de sesión valida tu membresía.
+    </div>
+  </div>
+</div>
+
+<!-- ================= BLOQUEO POR MEMBRESÍA ================= -->
+<div id="licenseGate" style="display:none">
+  <div class="gate-card">
+    <div class="gate-brand">
+      <div class="gi" id="licIcon">🔒</div>
+      <h2 id="licTitle">Membresía</h2>
+      <p class="gate-sub" id="licSub"></p>
+    </div>
+    <div id="licBody" style="font-size:13px;color:var(--ink);line-height:1.6;margin-top:6px"></div>
+    <div id="licContacto" class="lic-contacto"></div>
+    <button class="gate-btn" onclick="reVerificarLicencia()">Ya pagué / Volver a verificar</button>
+    <span class="gate-link" onclick="authLogout()">Cerrar sesión</span>
+    <div id="licMsg" class="gate-msg"></div>
+  </div>
+</div>
+
+<!-- ================= PANEL DE ADMINISTRACIÓN (solo tú) ================= -->
+<div class="modal-bg" id="adminModal" onclick="if(event.target===this)closeAdmin()">
+  <div class="modal" style="width:min(740px,96vw)">
+    <div class="modal-head"><span>Administración de licencias</span><button onclick="closeAdmin()" title="Cerrar">✕</button></div>
+    <div style="padding:16px;overflow-y:auto">
+      <div class="hint" style="margin-bottom:8px">Activa o renueva a cada médico. Al activar se fija la fecha de vencimiento; la app se bloquea sola al pasar esa fecha.</div>
+      <input class="modal-search" id="adminSearch" placeholder="Buscar por correo…" oninput="renderAdmin()" style="width:100%;box-sizing:border-box;margin-bottom:10px">
+      <div id="adminList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SUSCRIPCIÓN / PAGO ================= -->
+<div class="modal-bg" id="paywallModal" onclick="if(event.target===this)closePaywall()">
+  <div class="modal" style="width:min(460px,96vw)">
+    <div class="modal-head"><span>Suscripción</span><button onclick="closePaywall()" title="Cerrar">✕</button></div>
+    <div style="padding:18px 18px 20px">
+      <div id="paywallIntro" style="font-size:13.5px;color:var(--ink);line-height:1.6;margin-bottom:12px"></div>
+      <div style="margin:0 0 14px">
+        <input id="refCode" placeholder="Código de referido (opcional)" oninput="this.value=this.value.toUpperCase()"
+          style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#f7fafb;text-transform:uppercase">
+        <div class="hint" style="margin-top:4px">En el plan anual, un código válido te da un <b>mes extra gratis</b>.</div>
+      </div>
+      <div id="paywallPlanes"></div>
+      <div id="paypalSection" style="display:none;margin-top:4px">
+        <div style="display:flex;align-items:center;gap:10px;margin:10px 0 8px;color:var(--muted);font-size:12px">
+          <span style="flex:1;height:1px;background:var(--line)"></span>o paga con PayPal (internacional)<span style="flex:1;height:1px;background:var(--line)"></span>
+        </div>
+        <div id="paypalBox"></div>
+      </div>
+      <div id="paywallSinLink" style="display:none;font-size:13px;color:var(--ink);background:#f2f7f7;border:1px solid #d9e7e7;border-radius:10px;padding:12px;text-align:center;line-height:1.7"></div>
+      <div style="margin-top:14px;text-align:center">
+        <button class="btn btn-ghost dark" onclick="reVerificarLicencia();closePaywall()">Ya pagué / Activar acceso</button>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.6">
+        El pago se procesa de forma segura en la página del proveedor. Al activarse tu suscripción, tus pacientes no tienen límite.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= INSTITUCIÓN ================= -->
+<div class="modal-bg" id="instModal" onclick="if(event.target===this)closeInstitucion()">
+  <div class="modal" style="width:min(520px,96vw)">
+    <div class="modal-head"><span>Mi institución</span><button onclick="closeInstitucion()" title="Cerrar">✕</button></div>
+    <div style="padding:16px;overflow-y:auto">
+      <div id="instInfo" class="hint" style="margin-bottom:10px"></div>
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">Médicos de tu institución</div>
+      <div id="instList" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="instEmail" type="email" placeholder="correo del médico a invitar"
+          style="flex:1;min-width:180px;box-sizing:border-box;font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#f7fafb">
+        <button class="btn btn-save" onclick="agregarMiembroUI()">Invitar</button>
+      </div>
+      <div id="instMsg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+      <div class="hint" style="margin-top:10px">El médico invitado crea su cuenta con ese mismo correo y entra con acceso completo. Cada médico usa su propia firma; comparten la suscripción.</div>
     </div>
   </div>
 </div>
 <header class="topbar">
-  <h1>Valoración Preoperatoria <span class="tag">Cirugía no cardíaca</span></h1>
+  <h1>Aptus Preop <span class="tag">Valoración · cirugía no cardíaca</span></h1>
   <div class="actions">
     <span id="status" class="status"></span>
     <span id="saveState" class="save-state" onclick="quickSave()" title="Clic para guardar los cambios"></span>
-    <button class="btn btn-save" id="btnQuickSave" onclick="quickSave()" title="Guardar los cambios del paciente actual (también sube a la nube)">💾 Guardar</button>
-    <button class="btn btn-ghost" id="accountBtn" onclick="openAuthModal()">Cuenta</button>
-    <button class="btn btn-ghost" onclick="newPatient()">Nuevo</button>
-    <button class="btn btn-ghost" onclick="openLibraryModal()">Abrir paciente</button>
-    <button class="btn btn-ghost" onclick="openFirmaModal()">Firmar y sellar</button>
-    <button class="btn btn-pdf" onclick="window.print()">Imprimir / PDF</button>
-    <button class="btn btn-word" onclick="downloadWord()">Descargar Word</button>
+
+    <div class="menu" id="menuPacientes">
+      <button class="btn btn-ghost menu-btn" onclick="toggleMenu('menuPacientes',event)">📋 Pacientes ▾</button>
+      <div class="menu-pop">
+        <button class="menu-item" onclick="menuDo(newPatient)">＋ Nuevo paciente</button>
+        <button class="menu-item" id="btnQuickSave" onclick="menuDo(quickSave)">💾 Guardar</button>
+        <button class="menu-item" onclick="menuDo(openLibraryModal)">📂 Abrir paciente…</button>
+        <div class="menu-sep"></div>
+        <button class="menu-item" onclick="menuDo(downloadWord)">⬇ Descargar Word</button>
+      </div>
+    </div>
+
+    <div class="menu" id="menuPerfil">
+      <button class="btn btn-ghost menu-btn" id="btnPerfil" onclick="toggleMenu('menuPerfil',event)">👤 Perfil ▾</button>
+      <div class="menu-pop">
+        <button class="menu-item" onclick="menuDo(openFirmaModal)">🖊 Logo, firma y sello</button>
+      </div>
+    </div>
+
+    <button class="btn btn-pdf" onclick="imprimirPaciente()">🖨 Imprimir / PDF</button>
   </div>
 </header>
+
+<div id="trialBar" style="display:none">
+  <span id="trialText"></span>
+  <button onclick="openPaywall()">Suscribirme</button>
+</div>
 
 <div class="wrap">
   <!-- ================= FORM ================= -->
@@ -524,14 +751,15 @@
       </select></div>
       <div id="clinicaOtra" style="display:none">
         <div class="grid2">
-          <div class="field"><label>Nombre de la clínica</label><input id="cl_nombre" oninput="render()"></div>
+          <div class="field"><label>Nombre de la clínica / institución</label><input id="cl_nombre" oninput="render()"></div>
           <div class="field"><label>Teléfono</label><input id="cl_tel" oninput="render()"></div>
         </div>
         <div class="field"><label>Dirección</label><input id="cl_dir" oninput="render()"></div>
-        <div class="field"><label>Logo (opcional)</label>
-          <input type="file" id="cl_logo" accept="image/*" onchange="loadLogo(event)" style="font-size:12px">
-          <div class="hint">PNG o JPG. Se guarda dentro del archivo; no sube a ningún servidor.</div>
+        <div class="grid2">
+          <div class="field"><label>Médico (nombre que firma)</label><input id="cl_medico" oninput="render()" placeholder="Dr./Dra. Nombre Apellido"></div>
+          <div class="field"><label>Credencial / Colegiado</label><input id="cl_cred" oninput="render()" placeholder="Especialidad — Colegiado 00,000"></div>
         </div>
+        <div class="hint">El <b>logo</b> de tu institución lo subes en <b>«Logo, firma y sello»</b> (botón de la barra superior); queda guardado en tu cuenta y aparece en el encabezado del informe.</div>
       </div>
     </div></div>
 
@@ -569,10 +797,7 @@
         <div class="field"><label>Gineco-obstétricos</label><textarea id="a_go" oninput="render()"></textarea></div>
       </div>
       <div class="field"><label>Medicación actual</label><textarea id="a_med_act" oninput="render()"></textarea></div>
-      <div class="dm-flag">
-        <label class="dm-flag-check"><input type="checkbox" id="flag_dm" onchange="calc()">
-          <span><b>Paciente con diabetes mellitus</b> — activa el manejo perioperatorio de diabetes (ayuno, fármacos, insulina, metas)</span></label>
-      </div>
+      <div class="hint" style="margin-top:4px">La <b>diabetes</b> y las demás enfermedades del paciente se marcan en la sección <b>«Comorbilidades del paciente»</b>, más abajo.</div>
     </div></div>
 
     <div class="card"><h2>Hábitos y estilo de vida</h2><div class="card-body">
@@ -580,6 +805,7 @@
         <div class="field"><label>Ejercicio</label><input id="h_ej" oninput="render()"></div>
         <div class="field"><label>Alcohol</label><input id="h_alc" oninput="render()"></div>
       </div>
+      <div class="field"><label>Estado tabáquico</label><select id="h_tab_estado" onchange="calc()"><option value="">No determinado</option><option value="Nunca fumó">Nunca fumó</option><option value="Fumador actual">Fumador actual</option><option value="Exfumador">Exfumador</option></select></div>
       <div class="field"><label>Tabaco (descripción)</label><input id="h_tab" oninput="render()" placeholder="p. ej. exfumador, suspendió hace 3 años"></div>
       <div class="grid3">
         <div class="field"><label>Cigarrillos por día</label><input type="number" id="h_cig" min="0" oninput="calc()"></div>
@@ -662,6 +888,8 @@
           <div class="field"><label>Albúmina (g/dl)</label><input id="l_alb" oninput="calc()"></div>
           <div class="field"><label>Bilirrubina total (mg/dl)</label><input id="l_bili" oninput="calc()"></div>
           <div class="field"><label>TFG (CKD-EPI, auto)</label><input id="l_tfg_disp" readonly style="background:#eef6f6;font-weight:700"></div>
+          <div class="field"><label>CrCl Cockcroft-Gault (estimado, mL/min)</label><input id="at_crcl_disp" readonly style="background:#eef6f6;font-weight:700" value="—">
+            <div class="hint" style="margin-top:4px">Calculado con peso real. Validar el peso en obesidad o bajo peso y la estabilidad renal. No usar como único criterio de ajuste farmacológico.</div></div>
         </div>
       </div>
       <div class="grid3" style="margin-top:6px">
@@ -784,26 +1012,52 @@
     </div></div>
 
     <div class="card"><h2>Riesgo quirúrgico ACS-NSQIP</h2><div class="card-body">
-      <div class="hint" style="margin-bottom:8px">La calculadora ACS-NSQIP es externa (modelo propietario). Ábrala, obtenga los porcentajes del paciente y cópielos aquí; se mostrarán con el formato del informe. Deje en blanco lo que no aplique.</div>
-      <a href="https://riskcalculator.facs.org" target="_blank" rel="noopener" class="btn btn-ghost dark" style="display:inline-flex;margin-bottom:10px">↗ Abrir calculadora ACS-NSQIP</a>
-      <div class="field"><label>Opción A — Subir el PDF de ACS-NSQIP (lo lee solo)</label>
-        <input type="file" id="acs_pdf" accept="application/pdf,.pdf" onchange="importarACSpdf(event)" style="font-size:12px">
-        <div class="hint">Descargue el resumen en PDF desde la calculadora y súbalo aquí; se extraen los valores automáticamente.</div>
+      <div class="hint" style="margin-bottom:10px">Esta sección <b>no calcula</b> el riesgo: la calculadora ACS-NSQIP es externa. Usted la llena una sola vez en la web de ACS y trae el resultado aquí; la app lo acomoda con el formato del informe y lo compara con el promedio. Es <b>opcional</b>: déjela vacía si no la usa.</div>
+
+      <div class="nsqip-steps">
+        <div class="nsqip-step"><span class="nsqip-num">1</span>
+          <div style="flex:1">
+            <b>Abra la calculadora</b> y complete los datos del paciente y la cirugía.<br>
+            <a href="https://riskcalculator.facs.org" target="_blank" rel="noopener" class="btn btn-ghost dark" style="display:inline-flex;margin-top:6px">↗ Abrir calculadora ACS-NSQIP</a>
+          </div>
+        </div>
+
+        <div class="nsqip-step"><span class="nsqip-num">2</span>
+          <div style="flex:1">
+            <b>Traiga el resultado</b> con una de estas dos opciones:
+            <div class="field" style="margin-top:6px"><label>A · Subir el PDF <span style="font-weight:400;font-style:italic;color:var(--muted)">— recomendado, se lee solo</span></label>
+              <input type="file" id="acs_pdf" accept="application/pdf,.pdf" onchange="importarACSpdf(event)" style="font-size:12px"></div>
+            <div class="field" style="margin-top:8px"><label>B · Pegar el texto del resultado</label>
+              <textarea id="acs_paste" rows="3" placeholder="En la página de resultados de ACS: seleccione todo (Ctrl+A), copie (Ctrl+C) y pegue aquí." style="font-size:12px"></textarea>
+              <button type="button" class="btn-mini" style="margin:6px 0 0" onclick="importarACS()">⇩ Importar texto pegado</button></div>
+          </div>
+        </div>
+
+        <div class="nsqip-step"><span class="nsqip-num">3</span>
+          <div style="flex:1">
+            <b>Revise los valores.</b> Se llenan solos tras subir/pegar; puede corregir cualquiera a mano. Deje en blanco lo que no aplique.
+            <div id="acsInputs" style="margin-top:8px"></div>
+            <div class="grid2" style="margin-top:8px">
+              <div class="field"><label>Estancia prevista (días)</label><input id="acs_estancia" oninput="calc()"></div>
+              <div class="field"><label>Riesgo global (bajo / promedio / alto)</label><input id="acs_global" oninput="calc()"></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="field" style="margin-top:6px"><label>Opción B — Pegar el texto del resultado</label>
-        <textarea id="acs_paste" rows="3" placeholder="En la página de resultados de ACS, seleccione todo (Ctrl+A), copie (Ctrl+C) y pegue aquí; luego toque «Importar»." style="font-size:12px"></textarea></div>
-      <button type="button" class="btn-mini" style="margin:0 0 10px" onclick="importarACS()">⇩ Importar texto pegado</button>
-      <div id="acsInputs"></div>
-      <div class="grid2" style="margin-top:8px">
-        <div class="field"><label>Estancia prevista (días)</label><input id="acs_estancia" oninput="calc()"></div>
-        <div class="field"><label>Riesgo global (texto libre: bajo/promedio/alto)</label><input id="acs_global" oninput="calc()"></div>
-      </div>
+
       <input type="hidden" id="acs_meta">
-      <div class="hint" style="margin-top:4px">Al subir/pegar el informe también se capturan el <b>promedio</b> y la comparación (encima/igual/debajo del promedio) de cada desenlace para mostrarlos en la nota.</div>
+      <div class="hint" style="margin-top:8px">Al subir o pegar el informe también se capturan el <b>promedio</b> y la comparación (encima/igual/debajo del promedio) de cada desenlace, y aparecen en la nota.</div>
     </div></div>
 
-    <div class="card"><h2>Evaluación por sistemas</h2><div class="card-body">
-      <div class="hint" style="margin-bottom:8px">Comorbilidades: toque cada apartado para abrirlo. El punto verde indica que tiene datos marcados. Cada módulo genera conducta, qué pedir y a quién referir.</div>
+    <div class="card"><h2>Comorbilidades del paciente</h2><div class="card-body">
+      <div class="hint" style="margin-bottom:8px">Marque aquí las <b>enfermedades que tiene el paciente</b>. Cada una activa su <b>manejo perioperatorio</b>: qué estudios pedir, la conducta y a quién referir. Toque un apartado para abrirlo; el <b>punto verde</b> indica que ya tiene datos marcados.</div>
+
+      <div class="sysacc" data-sys="diabetes">
+        <div class="sysacc-head" onclick="toggleSysAcc('diabetes')"><span class="sysacc-car">▸</span> Diabetes mellitus <span class="sysacc-dot"></span></div>
+        <div class="sysacc-body" id="sysacc_diabetes" style="display:none">
+          <label class="check"><input type="checkbox" id="flag_dm" onchange="calc()"><span><b>El paciente tiene diabetes mellitus</b> — activa el manejo perioperatorio de diabetes (ayuno, fármacos orales, insulina y metas de glucosa).</span></label>
+        </div>
+      </div>
 
       <div class="sysacc" data-sys="renal">
         <div class="sysacc-head" onclick="toggleSysAcc('renal')"><span class="sysacc-car">▸</span> Renal / hidroelectrolítico <span class="sysacc-dot"></span></div>
@@ -922,6 +1176,10 @@
   <div class="preview-pane">
     <div class="preview-label">Vista previa de la nota</div>
     <div class="note" id="note"></div>
+    <div class="print-foot" id="printFoot" aria-hidden="true">
+      <span class="pf-left" id="pfClinica"></span>
+      <span class="pf-right" id="pfMedico"></span>
+    </div>
   </div>
 </div>
 
@@ -945,10 +1203,19 @@
       </div>
       <div id="authLoggedIn" style="display:none">
         <div style="font-size:13px;margin-bottom:6px">Sesión activa:</div>
-        <div id="authUserEmail" style="font-weight:700;color:var(--primary-dark);margin-bottom:14px"></div>
+        <div id="authUserEmail" style="font-weight:700;color:var(--primary-dark);margin-bottom:8px"></div>
+        <div id="authMembresia" style="font-size:12.5px;margin-bottom:8px"></div>
+        <div id="authReferido" style="display:none;margin:8px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#f7fafb">
+          <div style="font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:6px">🎁 Invita y gana meses gratis</div>
+          <div id="refArea" style="font-size:12.5px;color:var(--ink)">
+            <button class="btn btn-ghost dark" onclick="generarMiCodigo()">Generar mi código</button>
+          </div>
+          <div class="hint" style="margin-top:6px">Por cada médico que se suscriba con tu código, ganas 1 mes gratis. Quien lo usa recibe un mes extra en el plan anual.</div>
+        </div>
+        <div id="authUid" style="font-size:11px;color:var(--muted);margin-bottom:12px;word-break:break-all"></div>
         <div id="syncInfo" style="font-size:12px;color:var(--muted);margin-bottom:12px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost dark" onclick="syncNow()">Sincronizar ahora</button>
+          <button class="btn btn-ghost dark" id="authInstBtn" style="display:none" onclick="openInstitucion()">🏥 Mi institución</button>
           <button class="btn btn-ghost dark" onclick="authLogout()">Cerrar sesión</button>
         </div>
       </div>
@@ -959,27 +1226,42 @@
 <!-- ================= MODAL FIRMA ================= -->
 <div class="modal-bg" id="firmaModal" onclick="if(event.target===this)closeFirmaModal()">
   <div class="modal">
-    <div class="modal-head"><span>Firma y sello</span><button onclick="closeFirmaModal()" title="Cerrar">✕</button></div>
+    <div class="modal-head"><span>Logo, firma y sello</span><button onclick="closeFirmaModal()" title="Cerrar">✕</button></div>
     <div style="padding:16px;overflow-y:auto">
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
-        <div style="flex:1;min-width:180px">
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">Logo de la institución</div>
+          <div class="fm-prev fm-prev-logo" id="prevLogo"></div>
+          <input type="file" id="fileLogo" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="loadFirmaImg(event,'logo')">
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn btn-ghost dark" onclick="document.getElementById('fileLogo').click()">Cargar</button>
+            <button class="btn btn-ghost dark" onclick="delFirmaImg('logo')">Quitar</button>
+          </div>
+          <div class="fm-req">PNG con <b>fondo transparente</b> (ideal) o JPG. Horizontal o cuadrado, mínimo ~300 px de ancho. Se ajusta a ~460 px. Pésalo &lt; 400 KB.</div>
+        </div>
+        <div style="flex:1;min-width:200px">
           <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">Firma</div>
           <div class="fm-prev" id="prevFirma"></div>
-          <input type="file" id="fileFirma" accept="image/*" style="display:none" onchange="loadFirmaImg(event,'firma')">
+          <input type="file" id="fileFirma" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="loadFirmaImg(event,'firma')">
           <div style="display:flex;gap:6px;margin-top:6px">
             <button class="btn btn-ghost dark" onclick="document.getElementById('fileFirma').click()">Cargar</button>
             <button class="btn btn-ghost dark" onclick="delFirmaImg('firma')">Quitar</button>
           </div>
+          <div class="fm-req">Foto o escaneo de tu firma sobre <b>papel blanco</b>. PNG o JPG, recortada cerca del trazo, nítida y recta. Se ajusta a ~600 px.</div>
         </div>
-        <div style="flex:1;min-width:180px">
+        <div style="flex:1;min-width:200px">
           <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">Sello</div>
           <div class="fm-prev" id="prevSello"></div>
-          <input type="file" id="fileSello" accept="image/*" style="display:none" onchange="loadFirmaImg(event,'sello')">
+          <input type="file" id="fileSello" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="loadFirmaImg(event,'sello')">
           <div style="display:flex;gap:6px;margin-top:6px">
             <button class="btn btn-ghost dark" onclick="document.getElementById('fileSello').click()">Cargar</button>
             <button class="btn btn-ghost dark" onclick="delFirmaImg('sello')">Quitar</button>
           </div>
+          <div class="fm-req">Imagen de tu sello, PNG o JPG sobre fondo <b>blanco/claro</b>. Nítido y derecho. Se ajusta a ~600 px.</div>
         </div>
+      </div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.5;background:#f5f9fa;border-radius:6px;padding:8px 10px;margin-bottom:12px">
+        Las tres imágenes se guardan juntas (máx. 1 MB en total para sincronizar a la nube), así que mantenlas ligeras. El logo aparece en el encabezado del informe; la firma y el sello, al firmar.
       </div>
       <div style="border-top:1px solid var(--line);padding-top:12px">
         <div style="font-size:12px;font-weight:700;margin-bottom:8px">Firmar el documento actual</div>
@@ -1061,8 +1343,13 @@ function clinicaActual(){
     base.nombre=val("cl_nombre")||base.nombre||"Clínica";
     base.direccion=val("cl_dir")||base.direccion;
     base.telefono=val("cl_tel")||base.telefono;
-    if(window.__logoOtra)base.logo=window.__logoOtra;
+    if(val("cl_medico"))base.medico=val("cl_medico");
+    if(val("cl_cred"))base.credencial=val("cl_cred");
   }
+  // el logo subido (persistente, por usuario) aplica a cualquier sede
+  const logoSubido=getFirmaAssets().logo;
+  if(logoSubido)base.logo=logoSubido;
+  else if(k==="otra"&&window.__logoOtra)base.logo=window.__logoOtra;
   return base;
 }
 
@@ -1634,6 +1921,7 @@ function efManual(id){
 }
 // ---- Acordeón de "Evaluación por sistemas" ----
 const SYS_FLAGS={
+  diabetes:["flag_dm"],
   renal:["flag_renal","rn_dialisis"],
   pulmonar:["pul_epoc","pul_asma","pul_infec","pul_otra"],
   urinario:["itu_sintomas","itu_asintom"],
@@ -1642,6 +1930,23 @@ const SYS_FLAGS={
   endocrino:["flag_tiroides","flag_delirium"],
   alcohol:["flag_audit"],
 };
+/* ----- Menús desplegables de la barra superior ----- */
+function toggleMenu(id,ev){
+  if(ev)ev.stopPropagation();
+  const m=document.getElementById(id); if(!m)return;
+  const abierto=m.classList.contains("open");
+  document.querySelectorAll(".menu.open").forEach(x=>x.classList.remove("open"));
+  if(!abierto)m.classList.add("open");
+}
+function menuDo(fn){
+  document.querySelectorAll(".menu.open").forEach(x=>x.classList.remove("open"));
+  try{ (typeof fn==="function"?fn:window[fn])(); }catch(e){}
+}
+document.addEventListener("click",function(e){
+  if(!e.target.closest || !e.target.closest(".menu"))
+    document.querySelectorAll(".menu.open").forEach(x=>x.classList.remove("open"));
+});
+
 function toggleSysAcc(sys){
   const body=document.getElementById("sysacc_"+sys);
   const row=document.querySelector('.sysacc[data-sys="'+sys+'"]');
@@ -2007,6 +2312,23 @@ function estadioERC(tfg){
   if(tfg>=45)return "G3a (45-59)"; if(tfg>=30)return "G3b (30-44)";
   if(tfg>=15)return "G4 (15-29)"; return "G5 (<15)";
 }
+/* Cockcroft-Gault: aclaramiento de creatinina (mL/min), con peso real.
+   Estimación preliminar; validar peso en obesidad/bajo peso y la estabilidad renal.
+   No usar como único criterio de ajuste farmacológico. */
+function crclCockcroftGault(){
+  const nv=id=>{const t=val(id);if(!t)return null;const n=Number(t);return Number.isFinite(n)?n:null;};
+  const edad=nv("edad"), cr=nv("l_cr"), pesoIn=nv("peso"), unidad=val("peso_u"), sexo=val("sexo");
+  if(edad===null||!Number.isInteger(edad)||edad<18||edad>=140||
+     cr===null||cr<=0||pesoIn===null||pesoIn<=0||
+     !["kg","lb"].includes(unidad)||!["Femenino","Masculino"].includes(sexo)){
+    return null;
+  }
+  const peso=unidad==="lb"?pesoIn/2.2046:pesoIn;
+  let crcl=((140-edad)*peso)/(72*cr);
+  if(sexo==="Femenino")crcl*=0.85;
+  return Number.isFinite(crcl)?Math.round(crcl*10)/10:null;
+}
+function esFumadorActual(){return val("h_tab_estado")==="Fumador actual";}
 function hayRenal(){
   if(chk("flag_renal")||chk("rn_dialisis"))return true;
   const t=tfgCKDEPI(); if(t!==null && t<60)return true;
@@ -2634,6 +2956,8 @@ function calc(){
   if(dmt){const t=tfgCKDEPI();dmt.value=(t!==null)?t+" ml/min":"— (falta creatinina/edad/sexo)";}
   const lt=document.getElementById("l_tfg_disp");
   if(lt){const t=tfgCKDEPI();lt.value=(t!==null)?t+" ("+estadioERC(t)+")":"—";}
+  const cgDisp=document.getElementById("at_crcl_disp");
+  if(cgDisp){const crcl=crclCockcroftGault();cgDisp.value=crcl!==null?crcl+" mL/min":"—";}
   // cajas de hepatopatía y AUDIT-C
   const hb=document.getElementById("hepato_box");
   if(hb)hb.style.display=chk("flag_hepato")?"block":"none";
@@ -2818,6 +3142,11 @@ function secOn(id){ return SEC_STATE[id]!==false; }
 
 function render(){
   const cl=clinicaActual();
+  try{
+    const pfc=document.getElementById("pfClinica"), pfm=document.getElementById("pfMedico");
+    if(pfc)pfc.textContent=cl.nombre||"";
+    if(pfm)pfm.textContent=cl.medico||"";
+  }catch(e){}
   renderRecs();
   // compilar recomendaciones seleccionadas, agrupadas por fase
   const chosen=currentRecs().filter(r=>r.on);
@@ -2907,7 +3236,7 @@ function render(){
   <h2>Hábitos y estilo de vida</h2>
   <table><tr><td class="lab">Ejercicio</td><td colspan="3">${orDash(val("h_ej"))}</td></tr>
   <tr><td class="lab">Alcohol</td><td colspan="3">${orDash(val("h_alc"))}</td></tr>
-  <tr><td class="lab">Tabaco</td><td colspan="3">${orDash(val("h_tab"))}</td></tr>
+  <tr><td class="lab">Tabaco</td><td colspan="3">${orDash([val("h_tab_estado"),val("h_tab")].filter(Boolean).join(" · "))}</td></tr>
   ${indiceTabaquico()!==null?`<tr><td class="lab">Índice tabáquico</td><td colspan="3"><b>${indiceTabaquico().toFixed(1)} paquetes-año</b> · ${esc(interpTabaquico().split("· ")[1]||"")}</td></tr>`:""}</table>
 
   <h2>Examen físico</h2>
@@ -3171,7 +3500,7 @@ function render(){
       return `<div class="sign-imgs">
         ${a.sello?`<img class="sign-sello" src="${a.sello}">`:""}
         ${a.firma?`<img class="sign-firma" src="${a.firma}">`:""}
-      </div>`;})():""}
+      </div>`;})():`<div class="sign-imgs sign-space">&nbsp;</div>`}
     <div class="line"></div>
     <div class="nm">${esc(cl.medico)}</div>
     <div class="sm">${esc(cl.credencial)}</div>
@@ -3265,6 +3594,7 @@ function downloadWord(){
     .muted{color:#8794a0;font-style:italic;font-size:8.5pt}
     .sign{margin-top:26pt;text-align:center}
     .sign-imgs{margin-bottom:2pt}
+    .sign-space{height:60pt;line-height:60pt}
     .sign-firma{max-height:60pt}
     .sign-sello{max-height:56pt;margin-right:16pt}
     .sign .line{border-top:.75pt solid #34434f;width:200pt;margin:0 auto 3pt}
@@ -3388,12 +3718,13 @@ function getLibrary(){try{return JSON.parse(localStorage.getItem(LIB_KEY)||"[]")
 function setLibrary(l){try{localStorage.setItem(LIB_KEY,JSON.stringify(l));}catch(e){alert("No se pudo guardar (almacenamiento lleno o restringido).");}}
 function slug(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
 
-function saveToLibrary(){
+async function saveToLibrary(){
   const nombre=val("nombre").trim();
   if(!nombre){alert("Escriba el nombre del paciente antes de guardar.");return;}
   const fechaEval=val("fecha")||new Date().toISOString().slice(0,10);
   const lib=getLibrary();
   const id=slug(nombre)+"__"+fechaEval;
+  if(!(await consumirCupo(id)))return;   // prueba: límite de pacientes (servidor)
   const rec={id,nombre,fechaEval,savedAt:new Date().toISOString(),data:collectData()};
   const idx=lib.findIndex(r=>r.id===id);
   if(idx>=0){
@@ -3404,16 +3735,17 @@ function saveToLibrary(){
   updateBackupInfo();
   pushPaciente(rec);
   markSaved();
-  setStatus(FB.user?"Paciente guardado ☁":"Paciente guardado ✓");
+  setStatus("Paciente guardado ✓");
 }
 // Guardado rápido (botón diskette): actualiza el paciente actual sin preguntar,
 // pensado para presionarlo cuantas veces se quiera mientras se trabaja.
-function quickSave(){
+async function quickSave(){
   const nombre=val("nombre").trim();
   if(!nombre){ setStatus("Escriba el nombre del paciente para guardar"); return; }
   const fechaEval=val("fecha")||new Date().toISOString().slice(0,10);
   const lib=getLibrary();
   const id=slug(nombre)+"__"+fechaEval;
+  if(!(await consumirCupo(id)))return;   // prueba: límite de pacientes (servidor)
   const rec={id,nombre,fechaEval,savedAt:new Date().toISOString(),data:collectData()};
   const idx=lib.findIndex(r=>r.id===id);
   if(idx>=0) lib[idx]=rec; else lib.push(rec);
@@ -3421,7 +3753,7 @@ function quickSave(){
   updateBackupInfo();
   pushPaciente(rec);
   markSaved();
-  setStatus(FB.user?"Guardado ☁":"Guardado ✓");
+  setStatus("Guardado ✓");
   flashSaveBtn();
 }
 function flashSaveBtn(){
@@ -3431,6 +3763,16 @@ function flashSaveBtn(){
   b.classList.add("ok"); b.innerHTML="✓ Guardado";
   clearTimeout(b._t);
   b._t=setTimeout(()=>{b.classList.remove("ok");b.innerHTML=prev;},1400);
+}
+// Imprimir también consume una prueba cuando es un paciente nuevo (modelo: iniciar → imprimir/guardar).
+async function imprimirPaciente(){
+  const nombre=val("nombre").trim();
+  const fechaEval=val("fecha")||new Date().toISOString().slice(0,10);
+  if(nombre){
+    const id=slug(nombre)+"__"+fechaEval;
+    if(!(await consumirCupo(id)))return;   // 3er paciente en prueba → paywall, no imprime
+  }
+  window.print();
 }
 function fmtDate(iso){try{return new Date(iso).toLocaleString("es-GT",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return iso;}}
 
@@ -3696,7 +4038,8 @@ function openFirmaModal(){
 function closeFirmaModal(){document.getElementById("firmaModal").classList.remove("open");}
 function refreshFirmaModal(){
   const a=getFirmaAssets();
-  const pf=document.getElementById("prevFirma"), ps=document.getElementById("prevSello");
+  const pl=document.getElementById("prevLogo"), pf=document.getElementById("prevFirma"), ps=document.getElementById("prevSello");
+  if(pl)pl.innerHTML=a.logo?`<img src="${a.logo}" style="max-height:64px;max-width:100%">`:'<span class="fm-empty">Sin logo cargado</span>';
   if(pf)pf.innerHTML=a.firma?`<img src="${a.firma}" style="max-height:70px">`:'<span class="fm-empty">Sin firma cargada</span>';
   if(ps)ps.innerHTML=a.sello?`<img src="${a.sello}" style="max-height:70px">`:'<span class="fm-empty">Sin sello cargado</span>';
   // ¿huella disponible/registrada?
@@ -3708,28 +4051,41 @@ function refreshFirmaModal(){
 }
 function loadFirmaImg(ev,which){
   const f=ev.target.files[0];if(!f)return;
+  const esLogo=(which==="logo");
   const r=new FileReader();
   r.onload=()=>{
     const img=new Image();
     img.onload=()=>{
-      // redimensionar a un ancho máximo (la firma no necesita más) y comprimir
-      const MAXW=600;
+      const MAXW=esLogo?460:600;
       let w=img.width, h=img.height;
       if(w>MAXW){ h=Math.round(h*MAXW/w); w=MAXW; }
       const canvas=document.createElement("canvas");
       canvas.width=w; canvas.height=h;
       const ctx=canvas.getContext("2d");
-      // fondo blanco (firma/sello suelen ser sobre papel); evita transparencia pesada
-      ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,w,h);
-      ctx.drawImage(img,0,0,w,h);
-      // exportar como JPEG comprimido (mucho más ligero que PNG para esto)
-      let dataUrl=canvas.toDataURL("image/jpeg",0.85);
-      // si aún fuera grande, bajar calidad progresivamente
-      let q=0.85;
-      while(dataUrl.length>350000 && q>0.4){ q-=0.15; dataUrl=canvas.toDataURL("image/jpeg",q); }
+      let dataUrl;
+      if(esLogo){
+        // el logo conserva transparencia → PNG, sin fondo blanco
+        ctx.drawImage(img,0,0,w,h);
+        dataUrl=canvas.toDataURL("image/png");
+        if(dataUrl.length>400000){ // si pesa mucho, reducir tamaño
+          const f2=Math.sqrt(400000/dataUrl.length);
+          canvas.width=Math.round(w*f2); canvas.height=Math.round(h*f2);
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          ctx.drawImage(img,0,0,canvas.width,canvas.height);
+          dataUrl=canvas.toDataURL("image/png");
+        }
+      } else {
+        // firma/sello sobre papel → fondo blanco, JPEG comprimido
+        ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        dataUrl=canvas.toDataURL("image/jpeg",0.85);
+        let q=0.85;
+        while(dataUrl.length>350000 && q>0.4){ q-=0.15; dataUrl=canvas.toDataURL("image/jpeg",q); }
+      }
       const kb=Math.round(dataUrl.length/1024);
-      const a=getFirmaAssets(); a[which]=dataUrl; setFirmaAssets(a); refreshFirmaModal();
-      setStatus((which==="firma"?"Firma":"Sello")+" guardado ("+kb+" KB)");
+      const a=getFirmaAssets(); a[which]=dataUrl; setFirmaAssets(a); refreshFirmaModal(); render();
+      const nombre=esLogo?"Logo":(which==="firma"?"Firma":"Sello");
+      setStatus(nombre+" guardado ("+kb+" KB)");
     };
     img.onerror=()=>alert("No se pudo leer la imagen. Use PNG o JPG.");
     img.src=r.result;
@@ -3737,7 +4093,7 @@ function loadFirmaImg(ev,which){
   r.onerror=()=>alert("No se pudo leer el archivo.");
   r.readAsDataURL(f);ev.target.value="";
 }
-function delFirmaImg(which){const a=getFirmaAssets();delete a[which];setFirmaAssets(a);refreshFirmaModal();}
+function delFirmaImg(which){const a=getFirmaAssets();delete a[which];setFirmaAssets(a);refreshFirmaModal();render();}
 
 // ---- Aplicar firma (requiere contraseña) ----
 async function aplicarFirma(){
@@ -3820,7 +4176,7 @@ async function resetPwd(){
 
 /* ================= FIREBASE: AUTH + SINCRONIZACIÓN ================= */
 /* ---- Pantalla de inicio obligatoria ---- */
-function showGate(){const g=document.getElementById("loginGate");if(g)g.style.display="flex";}
+function showGate(){const g=document.getElementById("loginGate");if(g)g.style.display="none";} /* MODO PERSONAL: nunca mostrar login */
 function hideGate(){const g=document.getElementById("loginGate");if(g)g.style.display="none";}
 function gateMsg(txt,ok){const m=document.getElementById("gateMsg");if(!m)return;m.style.color=ok?"#2e7d5b":"#c0392b";m.textContent=txt||"";}
 function gateLogin(){
@@ -3860,12 +4216,97 @@ function refreshAuthModal(){
   const inU=!!(FB.user);
   document.getElementById("authLoggedOut").style.display=inU?"none":"block";
   document.getElementById("authLoggedIn").style.display=inU?"block":"none";
-  if(inU){document.getElementById("authUserEmail").textContent=FB.user.email;}
+  if(inU){
+    document.getElementById("authUserEmail").textContent=FB.user.email;
+    const mem=document.getElementById("authMembresia");
+    if(mem){
+      if(FB.user.uid===ADMIN_UID){ mem.innerHTML="<b style='color:#255e40'>Administrador</b> · acceso total"; }
+      else if(ENTITLED && MEMBRESIA){
+        mem.innerHTML="Suscripción: <b style='color:#255e40'>activa hasta "+fmtFechaLarga(MEMBRESIA)+"</b>";
+      } else if(MEMBRESIA){
+        mem.innerHTML="Suscripción: <b style='color:#96341f'>vencida ("+fmtFechaLarga(MEMBRESIA)+")</b> · <a onclick=\"openPaywall()\" style=\"color:var(--primary);cursor:pointer;text-decoration:underline\">renovar</a>";
+      } else {
+        const usados=USO_IDS.length;
+        mem.innerHTML="Plan: <b style='color:#7a5a12'>prueba gratuita ("+usados+" de "+TRIAL_LIMIT+" pacientes)</b> · <a onclick=\"openPaywall()\" style=\"color:var(--primary);cursor:pointer;text-decoration:underline\">suscribirme</a>";
+      }
+    }
+    const uidEl=document.getElementById("authUid");
+    if(uidEl)uidEl.textContent="UID: "+FB.user.uid;
+    const refBox=document.getElementById("authReferido");
+    if(refBox) refBox.style.display=(ENTITLED && MI_PLAN==="ind_anual" && FUNCTIONS_BASE)?"block":"none";
+    const instBtn=document.getElementById("authInstBtn");
+    if(instBtn) instBtn.style.display=(ENTITLED && MI_ROL==="titular" && FUNCTIONS_BASE)?"inline-flex":"none";
+  }
+}
+// Genera (o recupera) el código de referido del médico anual.
+async function generarMiCodigo(){
+  const area=document.getElementById("refArea");
+  if(!FB.user||!FUNCTIONS_BASE){ if(area)area.innerHTML="<span class='hint'>No disponible.</span>"; return; }
+  area.innerHTML="<span class='hint'>Generando…</span>";
+  try{
+    const token=await FB.user.getIdToken();
+    const r=await fetch(FUNCTIONS_BASE.replace(/\/$/,"")+"/generarCodigo",{
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:"{}"});
+    const d=await r.json();
+    if(d&&d.codigo){
+      area.innerHTML="Tu código: <b style='font-size:15px;color:var(--primary-dark);letter-spacing:1px'>"+esc(d.codigo)+"</b>"+
+        " <button class='btn-mini' onclick=\"copiarCodigo('"+d.codigo+"')\">Copiar</button>";
+    } else { area.innerHTML="<span class='hint'>"+esc((d&&d.error)||"No se pudo generar.")+"</span>"; }
+  }catch(e){ area.innerHTML="<span class='hint'>No se pudo generar: "+esc(e.message||e)+"</span>"; }
+}
+function copiarCodigo(c){
+  const txt="Te comparto mi código de Aptus Preop: "+c+" — úsalo al suscribirte al plan anual y recibes un mes extra gratis. "+ (typeof location!=="undefined"?"https://aptus.conocemed.com":"");
+  try{ navigator.clipboard.writeText(txt); setStatus("Mensaje de invitación copiado ✓"); }
+  catch(e){ try{ navigator.clipboard.writeText(c); setStatus("Código copiado ✓"); }catch(e2){ setStatus("Código: "+c); } }
+}
+
+/* ----- Panel de institución (titular) ----- */
+let INST_MIEMBROS=[], INST_MAX=3;
+async function fnFetch(path, body){
+  const t=await FB.user.getIdToken();
+  const r=await fetch(FUNCTIONS_BASE.replace(/\/$/,"")+"/"+path,{method:"POST",
+    headers:{"Authorization":"Bearer "+t,"Content-Type":"application/json"},body:JSON.stringify(body||{})});
+  return r.json();
+}
+async function openInstitucion(){
+  if(!FB.user||!FUNCTIONS_BASE)return;
+  document.getElementById("instModal").classList.add("open");
+  document.getElementById("instInfo").textContent="Cargando…";
+  document.getElementById("instList").innerHTML=""; document.getElementById("instMsg").textContent="";
+  try{
+    const d=await fnFetch("miInstitucion");
+    if(!d.titular){ document.getElementById("instInfo").textContent="No tienes una institución activa."; return; }
+    INST_MIEMBROS=d.miembros||[]; INST_MAX=d.maxAsientos||3;
+    document.getElementById("instInfo").innerHTML="Asientos: <b>"+(INST_MIEMBROS.length+1)+" de "+INST_MAX+"</b> (tú + "+INST_MIEMBROS.length+" médico(s)) · vence "+fmtFechaLarga(d.validoHasta);
+    renderInstList();
+  }catch(e){ document.getElementById("instInfo").textContent="No se pudo cargar la institución."; }
+}
+function closeInstitucion(){ document.getElementById("instModal").classList.remove("open"); }
+function renderInstList(){
+  const box=document.getElementById("instList");
+  if(!INST_MIEMBROS.length){ box.innerHTML="<div class='hint'>Aún no has invitado médicos.</div>"; return; }
+  box.innerHTML=INST_MIEMBROS.map(em=>"<div class='inst-row'><span class='inst-mail'>"+esc(em)+"</span>"+
+    "<button onclick=\"quitarMiembroUI('"+esc(em).replace(/'/g,"\\'")+"')\">Quitar</button></div>").join("");
+}
+async function agregarMiembroUI(){
+  const email=(val("instEmail")||"").trim().toLowerCase();
+  const msg=document.getElementById("instMsg");
+  if(!email||email.indexOf("@")<0){ msg.style.color="#c0392b"; msg.textContent="Escribe un correo válido."; return; }
+  if(INST_MIEMBROS.length>=INST_MAX-1){ msg.style.color="#c0392b"; msg.textContent="Asientos llenos ("+INST_MAX+" en total)."; return; }
+  msg.style.color="#2e7d5b"; msg.textContent="Invitando…";
+  try{
+    const d=await fnFetch("agregarMiembro",{email:email});
+    if(d&&d.ok){ document.getElementById("instEmail").value=""; msg.textContent="Médico invitado ✓"; openInstitucion(); }
+    else { msg.style.color="#c0392b"; msg.textContent=(d&&d.error)||"No se pudo invitar."; }
+  }catch(e){ msg.style.color="#c0392b"; msg.textContent="Error: "+(e.message||e); }
+}
+async function quitarMiembroUI(email){
+  if(!confirm("¿Quitar a "+email+" de tu institución? Perderá el acceso."))return;
+  try{ await fnFetch("quitarMiembro",{email:email}); openInstitucion(); }catch(e){}
 }
 function updateAccountBtn(){
-  const b=document.getElementById("accountBtn");
-  if(!b)return;
-  b.textContent = FB.user ? "☁ "+FB.user.email.split("@")[0] : "Cuenta";
+  const b=document.getElementById("btnPerfil");
+  if(b) b.textContent = "👤 Perfil ▾";   // MODO PERSONAL: etiqueta fija
 }
 function authLogin(){
   if(!FB.ready){alert("Firebase no está disponible (revise su conexión).");return;}
@@ -3906,94 +4347,299 @@ function traducirAuthError(e){
   return m[e.code]||("Error: "+(e.message||e.code));
 }
 
+/* ================= LICENCIAS / MEMBRESÍA ================= */
+function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function fmtFechaLarga(iso){ try{return new Date(iso+"T12:00:00").toLocaleDateString("es-GT",{year:"numeric",month:"long",day:"numeric"});}catch(e){return iso;} }
+function hideLicenseGate(){const g=document.getElementById("licenseGate");if(g)g.style.display="none";}
+function showLicenseGate(){const g=document.getElementById("licenseGate");if(g)g.style.display="flex";}
+function mostrarAdminBtn(show){const b=document.getElementById("menuAdmin");if(b)b.style.display=show?"flex":"none";}
+function contactoHTML(){
+  const wa=CONTACTO.wa_link?`<a href="${CONTACTO.wa_link}" target="_blank" rel="noopener">WhatsApp ${esc(CONTACTO.whatsapp||"")}</a>`:"";
+  const co=CONTACTO.correo?`<a href="mailto:${CONTACTO.correo}">${esc(CONTACTO.correo)}</a>`:"";
+  return "Para activar o renovar, contacta:<br>"+[wa,co].filter(Boolean).join(" &nbsp;·&nbsp; ");
+}
+async function checkLicense(user){
+  mostrarAdminBtn(user.uid===ADMIN_UID);
+  if(user.uid===ADMIN_UID){ ENTITLED=true; MEMBRESIA=""; await cargarUso(user); aplicarAcceso(); return; }
+  let lic=null;
+  try{
+    const doc=await FB.db.collection("licencias").doc(user.uid).get();
+    if(doc.exists){ lic=doc.data(); }
+    else{
+      try{ await FB.db.collection("licencias").doc(user.uid).set({email:user.email||"", estado:"prueba", creado:hoyISO()}); }catch(e){}
+      lic={estado:"prueba"};
+    }
+    try{ localStorage.setItem("preop_lic", JSON.stringify({validoHasta:lic.validoHasta||"", estado:lic.estado||"", ts:Date.now()})); }catch(e){}
+  }catch(e){
+    try{ lic=JSON.parse(localStorage.getItem("preop_lic")||"null"); }catch(e2){ lic=null; }
+  }
+  ENTITLED = !!(lic && lic.validoHasta && lic.validoHasta >= hoyISO());
+  MEMBRESIA = (lic && lic.validoHasta) ? lic.validoHasta : "";
+  MI_PLAN = (lic && lic.plan) ? lic.plan : "";
+  MI_ROL  = (lic && lic.rol)  ? lic.rol  : "";
+  // Si no está activo, quizá fue invitado a una institución → reclamar su lugar.
+  if(!ENTITLED && FUNCTIONS_BASE){
+    try{
+      const t=await user.getIdToken();
+      const rr=await fetch(FUNCTIONS_BASE.replace(/\/$/,"")+"/reclamarInstitucion",{method:"POST",headers:{"Authorization":"Bearer "+t,"Content-Type":"application/json"},body:"{}"});
+      const dd=await rr.json();
+      if(dd&&dd.activo){ ENTITLED=true; MEMBRESIA=dd.validoHasta||""; MI_PLAN="institucional"; MI_ROL="miembro"; }
+    }catch(e){}
+  }
+  await cargarUso(user);
+  aplicarAcceso();
+}
+// Aplica el acceso: con suscripción = ilimitado; sin ella = modo prueba (2 pacientes).
+function aplicarAcceso(){
+  hideGate(); hideLicenseGate();
+  updateAccountBtn();
+  try{ pullFirmaAssets(); }catch(e){}
+  if(ENTITLED){ hideTrialBar(); setStatus("Sesión iniciada"); }
+  else { updateTrialBanner(); if(location.search.indexOf("pago=exitoso")>=0) postPagoPoll(6); }
+}
+async function reVerificarLicencia(){
+  if(!FB.user){ showGate(); return; }
+  setStatus("Verificando suscripción…");
+  await checkLicense(FB.user);
+  if(ENTITLED){ setStatus("Suscripción activa ✓"); }
+  else { setStatus("Aún no se detecta una suscripción activa."); }
+}
+
+/* ----- Uso de la prueba (el conteo lo decide el servidor) ----- */
+// USO_IDS es solo un espejo local para el banner; la autoridad es usuarios/{uid}/config/uso
+// en Firestore, que solo escribe la Cloud Function consumirPrueba. Así nadie reinicia la
+// prueba borrando el navegador o editando localStorage.
+async function cargarUso(user){
+  let ids=[];
+  if(user && FB.db){
+    try{
+      const d=await FB.db.collection("usuarios").doc(user.uid).collection("config").doc("uso").get();
+      if(d.exists){ ids=((d.data()||{}).ids)||[]; }
+    }catch(e){}
+  }
+  USO_IDS=ids;
+}
+// Pide al servidor consumir un cupo de prueba para este paciente.
+// Devuelve true si se permite guardar/imprimir; si la prueba se agotó, abre el paywall.
+async function consumirCupo(id){
+  if(ENTITLED) return true;                     // suscrito = ilimitado
+  if(USO_IDS.indexOf(id)>=0) return true;       // ya contado → editar/imprimir libre
+  if(!FUNCTIONS_BASE || !FB.user){ openPaywall(); return false; }
+  try{
+    const t=await FB.user.getIdToken();
+    const r=await fetch(FUNCTIONS_BASE.replace(/\/$/,"")+"/consumirPrueba",{
+      method:"POST",
+      headers:{"Authorization":"Bearer "+t,"Content-Type":"application/json"},
+      body:JSON.stringify({id})
+    });
+    const d=await r.json();
+    if(d && d.allow){
+      if(!d.entitled && USO_IDS.indexOf(id)<0) USO_IDS.push(id);
+      updateTrialBanner();
+      return true;
+    }
+    openPaywall(); return false;
+  }catch(e){
+    alert("Necesitas conexión a internet para registrar un paciente nuevo en modo prueba.");
+    return false;
+  }
+}
+
+/* ----- Banner de prueba ----- */
+function showTrialBar(){const b=document.getElementById("trialBar");if(b)b.style.display="flex";}
+function hideTrialBar(){const b=document.getElementById("trialBar");if(b)b.style.display="none";}
+function updateTrialBanner(){
+  if(ENTITLED){ hideTrialBar(); return; }
+  const bar=document.getElementById("trialBar"), t=document.getElementById("trialText");
+  if(!bar||!t)return;
+  const usados=USO_IDS.length, quedan=Math.max(0,TRIAL_LIMIT-usados);
+  if(quedan>0){ bar.classList.remove("full"); t.textContent="Prueba gratuita · "+usados+" de "+TRIAL_LIMIT+" pacientes usados. Suscríbete para pacientes ilimitados."; }
+  else { bar.classList.add("full"); t.textContent="Prueba agotada ("+TRIAL_LIMIT+" pacientes). Suscríbete para seguir registrando pacientes."; }
+  showTrialBar();
+}
+
+/* ----- Pantalla de suscripción (paywall) ----- */
+function openPaywall(){
+  const intro=document.getElementById("paywallIntro");
+  const usados=USO_IDS.length;
+  if(intro){
+    intro.innerHTML = ENTITLED ? "Gestiona tu suscripción."
+      : (usados>=TRIAL_LIMIT
+          ? "Usaste tus <b>"+TRIAL_LIMIT+" pacientes gratis</b>. Suscríbete para registrar pacientes <b>sin límite</b>."
+          : "Suscríbete para pacientes <b>ilimitados</b>. Tu prueba incluye "+TRIAL_LIMIT+" pacientes gratis.");
+  }
+  const cont=document.getElementById("paywallPlanes"), sinLink=document.getElementById("paywallSinLink");
+  const auto = !!FUNCTIONS_BASE;                 // pago automático disponible
+  if(auto){
+    sinLink.style.display="none"; cont.style.display="block";
+    let html="";
+    ["individual","institucional"].forEach(g=>{
+      const ps=PLANES.filter(p=>p.grupo===g);
+      if(!ps.length)return;
+      html+="<div class='pw-grupo'>"+esc(GRUPOS[g]||g)+"</div>";
+      html+=ps.map(p=>"<div class='plan'><span class='plan-info'><span class='plan-nombre'>"+esc(p.nombre)+"</span><br>"+
+        "<span class='plan-precio'>"+esc(p.precio)+"</span>"+(p.nota?" <span class='plan-nota'>· "+esc(p.nota)+"</span>":"")+"</span>"+
+        "<button class='plan-btn' onclick=\"pagarPlan('"+p.id+"')\">Pagar</button></div>").join("");
+    });
+    cont.innerHTML=html;
+  } else {
+    cont.style.display="none"; sinLink.style.display="block";
+    sinLink.innerHTML="Para suscribirte, contáctanos:<br>"+
+      (CONTACTO.wa_link?"<a href='"+CONTACTO.wa_link+"' target='_blank' rel='noopener'>WhatsApp "+esc(CONTACTO.whatsapp||"")+"</a>":"")+
+      (CONTACTO.correo?" &nbsp;·&nbsp; <a href='mailto:"+CONTACTO.correo+"'>"+esc(CONTACTO.correo)+"</a>":"");
+  }
+  const ppSec=document.getElementById("paypalSection");
+  if(ppSec){
+    if(PAYPAL_CLIENT_ID && FB.user){ ppSec.style.display="block"; renderPaypal(); }
+    else ppSec.style.display="none";
+  }
+  document.getElementById("paywallModal").classList.add("open");
+}
+// Carga el SDK de PayPal (una sola vez) y dibuja los botones de suscripción.
+function cargarPaypal(){
+  return new Promise((res,rej)=>{
+    if(window.paypal){res(window.paypal);return;}
+    const s=document.createElement("script");
+    s.src="https://www.paypal.com/sdk/js?client-id="+encodeURIComponent(PAYPAL_CLIENT_ID)+"&vault=true&intent=subscription";
+    s.onload=()=>res(window.paypal);
+    s.onerror=()=>rej(new Error("No se pudo cargar PayPal"));
+    document.head.appendChild(s);
+  });
+}
+async function renderPaypal(){
+  const box=document.getElementById("paypalBox");
+  if(!box||!PAYPAL_CLIENT_ID||!FB.user)return;
+  box.innerHTML="<div class='hint'>Cargando PayPal…</div>";
+  let paypal;
+  try{ paypal=await cargarPaypal(); }catch(e){ box.innerHTML="<div class='hint'>No se pudo cargar PayPal.</div>"; return; }
+  const opts=PLANES.filter(p=>PAYPAL_PLANS[p.id]).map(p=>{
+    const et=(GRUPOS[p.grupo]||"").split(" · ")[0];
+    return "<option value='"+p.id+"'>"+esc(et+" "+p.nombre+" — "+(p.precioUSD||p.precio))+"</option>";
+  }).join("");
+  box.innerHTML="<select id='ppPlan' style='width:100%;box-sizing:border-box;font-family:inherit;font-size:12.5px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff'>"+opts+"</select><div id='ppBtn' style='margin-top:8px'></div>";
+  const dibujar=()=>{
+    const cont=document.getElementById("ppBtn"); if(!cont)return; cont.innerHTML="";
+    const planId=PAYPAL_PLANS[val("ppPlan")]; if(!planId)return;
+    try{
+      paypal.Buttons({
+        style:{layout:"horizontal",height:40,label:"subscribe",tagline:false},
+        createSubscription:(data,actions)=>{const ref=(val("refCode")||"").trim().toUpperCase();return actions.subscription.create({plan_id:planId, custom_id:FB.user.uid+(ref?"|"+ref:"")});},
+        onApprove:()=>{ closePaywall(); setStatus("Procesando tu pago…"); postPagoPoll(8); },
+        onError:()=>{ setStatus("No se pudo completar el pago con PayPal."); }
+      }).render(cont);
+    }catch(e){}
+  };
+  const sel=document.getElementById("ppPlan"); if(sel)sel.onchange=dibujar;
+  dibujar();
+}
+// Inicia el pago automático: pide a la Cloud Function el checkout y redirige a Recurrente.
+async function pagarPlan(plan){
+  if(!FB.user){ closePaywall(); showGate(); return; }
+  if(!FUNCTIONS_BASE){ alert("El pago automático aún no está configurado."); return; }
+  const btns=document.querySelectorAll("#paywallPlanes .plan-btn");
+  btns.forEach(b=>{b.disabled=true;});
+  setStatus("Abriendo pago seguro…");
+  try{
+    const token=await FB.user.getIdToken();
+    const ref=(val("refCode")||"").trim().toUpperCase();
+    const r=await fetch(FUNCTIONS_BASE.replace(/\/$/,"")+"/crearCheckout",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+      body:JSON.stringify({plan:plan, ref:ref})
+    });
+    const d=await r.json();
+    if(d&&d.url){ window.location.href=d.url; }
+    else { alert("No se pudo iniciar el pago: "+((d&&d.error)||"intente de nuevo")); btns.forEach(b=>{b.disabled=false;}); }
+  }catch(e){ alert("No se pudo iniciar el pago: "+(e.message||e)); btns.forEach(b=>{b.disabled=false;}); }
+}
+// Al volver de un pago exitoso, reintenta validar la licencia unos segundos
+// (el webhook puede tardar un instante en activar la cuenta).
+function postPagoPoll(intentos){
+  if(ENTITLED) { setStatus("Suscripción activada ✓"); return; }
+  if(intentos<=0){ setStatus("Si ya pagaste, toca «Ya pagué / Activar acceso» en un momento."); return; }
+  setStatus("Procesando tu pago…");
+  if(FB.user){ checkLicense(FB.user).then(()=>{ if(!ENTITLED) setTimeout(()=>postPagoPoll(intentos-1),4000); else setStatus("Suscripción activada ✓"); }); }
+  else setTimeout(()=>postPagoPoll(intentos-1),4000);
+}
+function closePaywall(){document.getElementById("paywallModal").classList.remove("open");}
+
+/* ----- Panel de administración (solo ADMIN_UID) ----- */
+let ADMIN_LIC=[];
+async function openAdmin(){
+  if(!FB.user || FB.user.uid!==ADMIN_UID){ alert("Solo el administrador puede abrir este panel."); return; }
+  document.getElementById("adminModal").classList.add("open");
+  document.getElementById("adminList").innerHTML="<div class='hint'>Cargando…</div>";
+  try{
+    const snap=await FB.db.collection("licencias").get();
+    ADMIN_LIC=[]; snap.forEach(d=>ADMIN_LIC.push(Object.assign({uid:d.id}, d.data())));
+    ADMIN_LIC.sort((a,b)=>((a.email||"").localeCompare(b.email||"")));
+    renderAdmin();
+  }catch(e){ document.getElementById("adminList").innerHTML="<div class='hint'>Error al cargar: "+esc(e.message||e)+"</div>"; }
+}
+function closeAdmin(){ document.getElementById("adminModal").classList.remove("open"); }
+function renderAdmin(){
+  const q=(val("adminSearch")||"").toLowerCase();
+  const box=document.getElementById("adminList");
+  const list=ADMIN_LIC.filter(l=>!q || (l.email||"").toLowerCase().includes(q));
+  if(!list.length){ box.innerHTML="<div class='hint'>Sin médicos registrados todavía.</div>"; return; }
+  box.innerHTML=list.map(l=>{
+    const vig=l.validoHasta && l.validoHasta>=hoyISO();
+    const est = !l.validoHasta ? ["Pendiente","pend"] : (vig?["Activa hasta "+l.validoHasta,"ok"]:["Vencida "+l.validoHasta,"no"]);
+    return "<div class='adm-row'><span class='adm-mail'>"+esc(l.email||l.uid)+"</span>"+
+      "<span class='adm-state "+est[1]+"'>"+esc(est[0])+"</span>"+
+      "<span class='adm-acts'>"+
+      "<button onclick=\"activarLic('"+l.uid+"',14)\">+14 días</button>"+
+      "<button onclick=\"activarLic('"+l.uid+"',30)\">+1 mes</button>"+
+      "<button onclick=\"activarLic('"+l.uid+"',90)\">+3 meses</button>"+
+      "<button onclick=\"activarLic('"+l.uid+"',365)\">+1 año</button>"+
+      "<button class='danger' onclick=\"vencerLic('"+l.uid+"')\">Vencer</button>"+
+      "</span></div>";
+  }).join("");
+}
+async function activarLic(uid, dias){
+  const base=new Date(); base.setDate(base.getDate()+dias);
+  const hasta=base.toISOString().slice(0,10);
+  try{
+    await FB.db.collection("licencias").doc(uid).set({estado:"activa", validoHasta:hasta, actualizado:hoyISO()},{merge:true});
+    const r=ADMIN_LIC.find(x=>x.uid===uid); if(r){r.validoHasta=hasta;r.estado="activa";}
+    renderAdmin();
+  }catch(e){ alert("No se pudo activar: "+(e.message||e)); }
+}
+async function vencerLic(uid){
+  if(!confirm("¿Vencer la membresía de este médico ahora? Quedará bloqueado al recargar.")) return;
+  const ayer=new Date(); ayer.setDate(ayer.getDate()-1);
+  const hasta=ayer.toISOString().slice(0,10);
+  try{
+    await FB.db.collection("licencias").doc(uid).set({estado:"vencida", validoHasta:hasta, actualizado:hoyISO()},{merge:true});
+    const r=ADMIN_LIC.find(x=>x.uid===uid); if(r){r.validoHasta=hasta;r.estado="vencida";}
+    renderAdmin();
+  }catch(e){ alert("No se pudo actualizar: "+(e.message||e)); }
+}
+
 // ---- Sincronización de la biblioteca con Firestore ----
 // Documento por paciente en: usuarios/{uid}/pacientes/{recId}
 let SYNC_BUSY=false;
 function pacientesCol(){ return FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes"); }
 
+// Los pacientes viven solo en este dispositivo: no hay sincronización con la nube.
 async function syncNow(){
-  if(!FB.user){openAuthModal();return;}
-  if(SYNC_BUSY)return;
-  SYNC_BUSY=true; setSyncInfo("Sincronizando…");
-  try{
-    // 1) subir locales que no estén o sean más nuevos
-    const local=getLibrary();
-    const snap=await pacientesCol().get();
-    const remoto={}; snap.forEach(d=>remoto[d.id]=d.data());
-    // fusión: por savedAt más reciente
-    let subidos=0, bajados=0;
-    for(const rec of local){
-      const r=remoto[rec.id];
-      if(!r || (rec.savedAt||"")>(r.savedAt||"")){
-        await pacientesCol().doc(rec.id).set(rec);
-        subidos++;
-      }
-    }
-    // 2) bajar remotos que no estén o sean más nuevos localmente
-    const localMap={}; local.forEach(r=>localMap[r.id]=r);
-    let merged=[...local];
-    for(const id in remoto){
-      const r=remoto[id], l=localMap[id];
-      if(!l){merged.push(r);bajados++;}
-      else if((r.savedAt||"")>(l.savedAt||"")){
-        merged=merged.map(x=>x.id===id?r:x);bajados++;
-      }
-    }
-    setLibrary(merged);
-    if(document.getElementById("libModal").classList.contains("open"))renderLibrary();
-    setSyncInfo(`Sincronizado ✓ (${subidos} subidos, ${bajados} bajados) · ${fmtDate(new Date().toISOString())}`);
-    try{localStorage.setItem("preop_lastsync",new Date().toISOString());}catch(e){}
-  }catch(e){
-    setSyncInfo("Error al sincronizar: "+(e.message||e));
-  }
-  SYNC_BUSY=false;
+  setSyncInfo("Los pacientes se guardan solo en este dispositivo (sin nube). Respalda con «Respaldar (descargar)».");
 }
 function setSyncInfo(txt){const el=document.getElementById("syncInfo");if(el)el.textContent=txt;}
 
-// guardar un paciente también en la nube (si hay sesión)
-async function pushPaciente(rec){
-  if(!FB.user){ setStatus("Guardado local (sin sesión en la nube)"); return; }
-  try{
-    await pacientesCol().doc(rec.id).set(rec);
-    setStatus("Paciente guardado en la nube ☁");
-  }catch(e){
-    console.log("push falló:",e);
-    const msg=(""+(e&&e.message||e));
-    if((e&&e.code==="permission-denied")||msg.toLowerCase().includes("permission"))
-      alert("Firebase rechazó guardar el paciente por reglas de seguridad.\n\nRevise que las reglas de Firestore cubran:\n\nmatch /usuarios/{uid}/{document=**} {\n  allow read, write: if request.auth != null && request.auth.uid == uid;\n}");
-    else if(msg.toLowerCase().includes("longer than")||msg.includes("1048487"))
-      alert("El paciente excede el límite de 1 MB por documento en Firestore (posiblemente por una firma/imagen muy grande).");
-    else
-      alert("No se pudo subir el paciente a la nube: "+msg+"\n\nSe guardó localmente. Revise su conexión e intente «Sincronizar ahora».");
-    setStatus("Guardado local; falló la nube");
-  }
-}
-async function deletePacienteRemoto(id){
-  if(!FB.user)return;
-  try{ await pacientesCol().doc(id).delete(); }catch(e){ console.log("delete remoto falló:",e); }
-}
+// Los datos de pacientes se guardan SOLO en este dispositivo (no en la nube).
+async function pushPaciente(rec){ setStatus("Guardado ✓"); }
+async function deletePacienteRemoto(id){ /* datos locales: nada que borrar en la nube */ }
 
-// listener de estado de sesión
-if(FB.ready){
-  FB.auth.onAuthStateChanged(async user=>{
-    FB.user=user;
-    updateAccountBtn();
-    refreshAuthModal();
-    if(user){
-      hideGate();               // ya autenticado → mostrar la app
-      const b=document.getElementById("gateBtn"); if(b)b.disabled=false;
-      setStatus("Sesión iniciada ☁");
-      await pullFirmaAssets();  // trae firma y sello de la nube
-      await syncNow();          // sincroniza pacientes
-    } else {
-      showGate();               // sin sesión → bloquear la app
-    }
-  });
-}else{
-  // Firebase no cargó (sin conexión en el primer arranque): mantener bloqueo y avisar
-  showGate();
-  gateMsg("Se requiere conexión a Internet para el primer inicio de sesión.");
-}
+// MODO PERSONAL: sin login. Se abre la app directamente, con acceso total y datos locales.
+(function arranqueLocal(){
+  try{ FB.user={uid:"local", email:"local"}; ENTITLED=true; }catch(e){}
+  try{ hideGate(); }catch(e){}
+  try{ if(typeof hideLicenseGate==="function") hideLicenseGate(); }catch(e){}
+  try{ if(typeof hideTrialBar==="function") hideTrialBar(); }catch(e){}
+  try{ updateAccountBtn(); }catch(e){}
+  try{ pullPerfil && pullPerfil(); }catch(e){}
+})();
 
 /* ================= INIT ================= */
 buildTipos();buildScores();buildRecBank();buildSecToggles();buildACSInputs();
