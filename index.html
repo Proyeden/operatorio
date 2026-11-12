@@ -906,7 +906,7 @@
         <div class="field"><label>SatO₂ (%)</label><input id="v_sat" oninput="render()"></div>
       </div>
       <div class="grid3">
-        <div class="field"><label>Peso</label><input type="number" id="peso" oninput="calc()"></div>
+        <div class="field"><label>Peso</label><input type="text" inputmode="decimal" id="peso" oninput="calc()"></div>
         <div class="field"><label>Unidad</label><select id="peso_u" onchange="calc()"><option>lb</option><option>kg</option></select></div>
         <div class="field"><label>Talla (cm)</label><input type="number" id="talla" oninput="calc()"></div>
       </div>
@@ -2482,7 +2482,7 @@ function editRec(cid){
 
 /* ================= HELPERS ================= */
 const val=id=>{const e=document.getElementById(id);return e?e.value.trim():"";};
-const num=id=>{const v=parseFloat(val(id));return isNaN(v)?null:v;};
+const num=id=>{const t=val(id);if(t==null||t==="")return null;const v=parseFloat(String(t).replace(",","."));return isNaN(v)?null:v;};
 function analizarNumeroLaboratorio(texto,permiteCero=false){
   const s=String(texto).trim();
   if(!s)return {estado:"vacio",valor:null};
@@ -2854,6 +2854,7 @@ function tieneDiabetes(){
 function tfgCKDEPI(){
   const cr=numeroLaboratorio("l_cr"), edad=num("edad"), sexo=val("sexo");
   if(cr===null||edad===null||!sexo)return null;
+  if(edad<18)return null; // CKD-EPI 2021 no validado en menores de 18
   const fem = sexo==="Femenino";
   const k = fem?0.7:0.9;
   const a = fem?-0.241:-0.302;
@@ -2872,7 +2873,7 @@ function crclCockcroftGault(){
   const numeroValido=id=>{
     const texto=val(id);
     if(!texto)return null;
-    const numero=Number(texto);
+    const numero=Number(String(texto).replace(",","."));
     return Number.isFinite(numero)?numero:null;
   };
 
@@ -3104,7 +3105,7 @@ function planRenal(){
   P.conducta.push("Nefroprotección hemodinámica: mantener PAM ≥ 65 mmHg intraoperatoria (más alta en hipertensos); evitar hipovolemia e hipervolemia (POQI-3).");
   P.conducta.push("Evitar AINEs en el perioperatorio (riesgo de lesión renal, sobre todo en hipovolemia). Preferir analgesia multimodal no nefrotóxica.");
   P.conducta.push("Contraste yodado: usar el menor volumen y agentes de baja osmolaridad; el riesgo renal por sí solo no contraindica un estudio verdaderamente necesario. Asegurar euvolemia.");
-  P.conducta.push("IECA/ARA-II: suspender su beneficio de continuarlos es incierto; es razonable omitir la dosis de la mañana y reiniciar dentro de 48 h si está estable y sin lesión renal (POQI-3).");
+  P.conducta.push("IECA/ARA-II: el beneficio de continuarlos es incierto; es razonable omitir la dosis de la mañana y reiniciar dentro de 48 h si está estable y sin lesión renal (POQI-3).");
   P.conducta.push("Ajustar antibióticos y fármacos de eliminación renal a la depuración. Meta de glucosa < 180 mg/dl. Transfusión con estrategia restrictiva.");
   if(chk("rcri_dm")||chk("flag_dm")||tieneDiabetes())
     P.conducta.push("Suspender inhibidores de SGLT2 3-4 días antes (cetoacidosis euglucémica; también reduce depleción de volumen).");
@@ -3124,6 +3125,9 @@ function planRenal(){
   if(dial){
     P.conducta.push("En diálisis: coordinar la sesión el día PREVIO (no el mismo día) por la heparina y los cambios de volumen/potasio. Pesar en seco de referencia.");
     P.referir.push("Coordinar con nefrología la diálisis perioperatoria y el manejo del acceso vascular.");
+  }
+  if((tfg!==null&&tfg<30)||dial){
+    P.conducta.push("Ajuste renal de fármacos (CrCl <30 mL/min): ajustar dosis/intervalo de los de eliminación renal. HBPM profiláctica o terapéutica: reducir dosis o preferir heparina no fraccionada según protocolo, validando el CrCl por Cockcroft-Gault. Precaución con anticoagulantes orales directos (varios contraindicados o a dosis reducida).");
   }
   if((tfg!==null&&tfg<30)||dial)
     P.referir.push("Referir a nefrología (ERC G4-G5 o diálisis): optimización, manejo de anemia, acidosis y electrolitos; valorar nivel de cuidados postoperatorios.");
@@ -3602,7 +3606,8 @@ function sangradoRiesgo(){
 }
 function onSangradoManual(){calc();}
 function trombosisAlta(){
-  return ["tr_mitral","tr_aortica","tr_acv3m","tr_cha2","tr_reuma","tr_tev3m","tr_trombofilia","tr_cancer"]
+  const stentReciente = val("at_stent")==="Colocado hace < 3 meses";
+  return stentReciente || ["tr_mitral","tr_aortica","tr_acv3m","tr_cha2","tr_reuma","tr_tev3m","tr_trombofilia","tr_cancer"]
     .some(id=>chk(id));
 }
 function planAntitrombotico(){
@@ -3612,7 +3617,8 @@ function planAntitrombotico(){
   const mencionaAntiagregante=/\b(aspirina|ácido acetilsalicílico|acido acetilsalicilico|clopidogrel|ticagrelor|prasugrel|p2y12|dapt)\b/i.test(medicacion);
   if(!ac && !ap && !stent && !mencionaAntiagregante)return [];
   const sang=sangradoRiesgo(), altoTrombo=trombosisAlta();
-  const tfg=num("at_tfg"), esp=val("at_esp");
+  // Usa la TFG manual si se ingresó; si no, el CrCl calculado (Cockcroft-Gault). Editable.
+  const tfg=(num("at_tfg")!==null?num("at_tfg"):crclCockcroftGault()), esp=val("at_esp");
   const tipo=val("tipo");
   const P=[];
   P.push(`Riesgo hemorrágico del procedimiento: ${sang}. Riesgo trombótico: ${altoTrombo?"ALTO":"bajo-moderado"}.`);
@@ -3719,9 +3725,33 @@ function planAntitrombotico(){
   return P;
 }
 function onTipoChange(){
+  const t=val("tipo");
   // auto-set cirugía alto riesgo RCRI
-  setChk("rcri_hr",HIRISK.has(val("tipo")));
+  setChk("rcri_hr",HIRISK.has(t));
+  // Sugerencias automáticas (EDITABLES): el médico puede cambiarlas después
+  autoSugerirDesdeCirugia(t);
   calc();
+}
+// Autosugerencias por tipo de cirugía — valores por defecto, siempre editables
+function autoSugerirDesdeCirugia(t){
+  // 1) Riesgo quirúrgico sugerido (editable)
+  const RIESGO_SUG={
+    "Oftalmológica":"Bajo (<1%)","Dermatológica/plástica menor":"Bajo (<1%)",
+    "Endoscopía con sedación":"Bajo (<1%)","Mama":"Bajo (<1%)","Hernia de pared":"Bajo (<1%)",
+    "Ortopedia menor":"Bajo (<1%)","Vesícula (lap)":"Intermedio (1-5%)","Ginecológica":"Intermedio (1-5%)",
+    "Urológica (RTU)":"Intermedio (1-5%)","Cabeza y cuello/tiroides":"Intermedio (1-5%)",
+    "Columna":"Intermedio (1-5%)","Artroplastia cadera/rodilla":"Intermedio (1-5%)",
+    "Trauma mayor":"Alto (>5%)","Abdominal mayor":"Alto (>5%)","Vascular mayor":"Alto (>5%)","Bariátrica":"Alto (>5%)"
+  };
+  const rq=document.getElementById("riesgoq");
+  if(rq && RIESGO_SUG[t]!==undefined) rq.value=RIESGO_SUG[t];
+  // 2) Tromboprofilaxis en artroplastia: pre-marca el ítem Caprini (editable)
+  setChk("c3", t==="Artroplastia cadera/rodilla");
+  // 3) ARISCAT hereda la incisión (editable; value = puntaje)
+  const ai=document.getElementById("ar_inc");
+  if(ai){
+    ai.value=(t==="Abdominal mayor"||t==="Bariátrica"||t==="Vascular mayor")?"15":"0"; // 15=Abdominal alta, 0=Periférica
+  }
 }
 function calc(){
   // reflejar autos en checkboxes visibles
@@ -4304,20 +4334,24 @@ function render(){
     <div class="muted" style="margin-top:4px">Administrar 30-60 min antes de la incisión. Redosificar si la cirugía se prolonga (&gt;3-4 h) o hay pérdida hemática significativa. Ajustar a patrones de resistencia local.</div>`;})()}
 
   ${(function(){if(!secOn("tromboprofx"))return "";const lineasTP=planTromboprofilaxis();
+    if(!lineasTP.length)return "";
+    const info=lineasTP.filter(t=>!esOpcionTromboprofilaxis(t));
     const seleccionTP=lineasTP
       .filter(t=>esOpcionTromboprofilaxis(t) && lineOn("tromboprofx",t))
       .map(t=>{
         const k=lineKey("tromboprofx",t);
         return {original:t,texto:LINE_EDIT[k]||t};
       });
-    if(!seleccionTP.length)return "";
-    const tp=[
+    const cuerpo=[
+      ...info,
       ...seleccionTP.map(x=>x.texto),
       ...advertenciasTromboprofilaxis(seleccionTP,lineasTP)
     ];
+    const aviso = seleccionTP.length ? "" : `<div class="muted">Seleccione una opción farmacológica (•) en la sección «Tromboprofilaxis farmacológica» para incluirla en la nota.</div>`;
     return `<h2>Tromboprofilaxis farmacológica</h2>
-    <div class="muted" style="margin-bottom:5px">Alternativas seleccionadas para valoración por el equipo quirúrgico. Caprini: ${scoreTotal("Caprini")}. La indicación definitiva depende del procedimiento, riesgo hemorrágico y contraindicaciones.</div>
-    <div class="recs">${tp.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`;})()}
+    <div class="muted" style="margin-bottom:5px">Alternativas para valoración por el equipo quirúrgico. Caprini: ${scoreTotal("Caprini")}. La indicación definitiva depende del procedimiento, riesgo hemorrágico y contraindicaciones.</div>
+    ${cuerpo.length?`<div class="recs">${cuerpo.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:""}
+    ${aviso}`;})()}
 
   ${(function(){if(!secOn("antitrombo"))return "";
     const pa=filtLines("antitrombo",planAntitrombotico());
