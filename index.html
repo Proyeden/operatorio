@@ -561,6 +561,7 @@
 
     FB.auth = firebase.auth();
     FB.db = firebase.firestore();
+    try{ FB.db.settings({ ignoreUndefinedProperties: true }); }catch(e){}
 
 
     FB.ready = true;
@@ -725,6 +726,7 @@
         <button class="menu-item" id="btnQuickSave" onclick="menuDo(quickSave)">💾 Guardar</button>
         <button class="menu-item" onclick="menuDo(openLibraryModal)">📂 Abrir paciente…</button>
         <button class="menu-item" onclick="menuDo(sincronizarNube)">☁️ Sincronizar con la nube</button>
+        <button class="menu-item" onclick="menuDo(limpiarDuplicados)">🧹 Limpiar duplicados</button>
       </div>
     </div>
 
@@ -4609,7 +4611,7 @@ function collectData(){
   d.lineEdit={...LINE_EDIT};
   d.revisionArtroplastiaHistorica=REVISION_ARTROPLASTIA_HISTORICA;
   // estado de recomendaciones (personalizadas/banco marcadas y toggles de las automáticas)
-  d.recState=REC_STATE.map(r=>({texto:r.texto,fase:r.fase,on:r.on,origen:r.origen,cid:r.cid}));
+  d.recState=REC_STATE.map(r=>({texto:r.texto,fase:r.fase,on:r.on,origen:r.origen,cid:r.cid??null}));
   d.recUserToggled={...REC_USER_TOGGLED};
   return d;
 }
@@ -4844,8 +4846,8 @@ function setLibrary(l){
   }
 
   const clave = clavePrivada(LIB_KEY);
-  // Nube primero: localmente solo guardamos el índice (metadata); el expediente completo vive en la nube.
-  const payload = JSON.stringify((l||[]).map(metaDe));
+  // Guarda tal cual: índice (metadata) para los sincronizados, expediente COMPLETO para los que aún no subieron.
+  const payload = JSON.stringify(l||[]);
   try {
     localStorage.setItem(clave, payload);
   } catch (e) {
@@ -4942,24 +4944,26 @@ async function guardarValoracionAPTUS(modoRapido = false) {
       throw new Error("El nombre del paciente ya no esta disponible");
     }
 
+    FULL_CACHE[id] = rec.data; // caché en memoria del expediente completo
+    const subido = await pushPaciente(rec); // nube primero: intenta subir
+    // A prueba de fallos: si subió, local guarda solo el índice; si NO subió, guarda el expediente COMPLETO (no se pierde)
+    const guardado = subido ? metaDe(rec) : rec;
     if (idx >= 0) {
-      lib[idx] = rec;
+      lib[idx] = guardado;
     } else {
-      lib.push(rec);
+      lib.push(guardado);
     }
-
-    FULL_CACHE[id] = rec.data; // caché local del expediente completo (nube primero)
     setLibrary(lib);
 
     updateBackupInfo();
-    pushPaciente(rec);
     markSaved();
 
     if (modoRapido) {
-      setStatus("Guardado ✓");
+      setStatus(subido ? "Guardado y sincronizado ✓" : "Guardado localmente — ⚠ no subió a la nube");
       flashSaveBtn();
     } else {
-      setStatus("Paciente guardado ✓");
+      setStatus(subido ? "Paciente guardado y sincronizado ✓" : "Guardado localmente — ⚠ no se pudo subir a la nube");
+      if(!subido){ try{ alert("El expediente se guardó en este navegador, pero NO se pudo subir a la nube. Revise su conexión; use «Sincronizar con la nube» más tarde para subirlo."); }catch(e){} }
     }
 
   } catch (error) {
@@ -5078,6 +5082,46 @@ async function sincronizarNube(){
     setStatus("Sincronizado con la nube ✓");
   }catch(e){ console.warn("sincronizarNube:",e); setStatus("No se pudo sincronizar con la nube"); }
 }
+// Limpiar duplicados EXACTOS (mismo nombre y mismos datos); conserva la copia más reciente.
+async function limpiarDuplicados(){
+  if(!FB || !FB.user || !FB.db){ alert("Inicie sesión para limpiar duplicados."); return; }
+  try{
+    setStatus("Analizando duplicados…");
+    const col=FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes");
+    const snap=await col.get();
+    const full=[]; const vistos=new Set();
+    snap.forEach(d=>{ const r=d.data(); if(r&&r.id){ full.push(r); vistos.add(r.id); } });
+    // incluir expedientes completos que estén solo en local (aún no subidos)
+    getLibrary().forEach(r=>{ if(r&&r.id && r.data && typeof r.data==="object" && Object.keys(r.data).length && !vistos.has(r.id)) full.push(r); });
+    if(full.length<2){ alert("No hay suficientes expedientes para analizar duplicados."); setStatus(""); return; }
+    // agrupar por firma: nombre normalizado + datos idénticos
+    const firma=r=> slug(r.nombre||"") + "|" + JSON.stringify(r.data||{});
+    const grupos={};
+    full.forEach(r=>{ const k=firma(r); (grupos[k]=grupos[k]||[]).push(r); });
+    const aBorrar=[];
+    Object.values(grupos).forEach(g=>{
+      if(g.length<=1) return;
+      g.sort((a,b)=> (b.savedAt||"").localeCompare(a.savedAt||"")); // más reciente primero
+      aBorrar.push(...g.slice(1)); // borrar todos menos el más reciente
+    });
+    if(!aBorrar.length){ alert("No se encontraron duplicados exactos (mismo nombre y mismos datos)."); setStatus(""); return; }
+    if(confirm(`Se encontraron ${aBorrar.length} duplicados exactos (mismo nombre y mismos datos).\nSe conservará la copia más reciente de cada uno.\n\n¿Desea EXPORTAR un respaldo antes de limpiar? (recomendado)\n\nAceptar = exportar respaldo primero · Cancelar = continuar sin respaldo`)){
+      await exportLibrary();
+      if(!confirm("Respaldo descargado. ¿Continuar ahora con la limpieza de duplicados?")) { setStatus(""); return; }
+    }
+    if(!confirm(`Confirmar: eliminar ${aBorrar.length} expedientes duplicados. Esta acción no se puede deshacer.`)){ setStatus(""); return; }
+    setStatus("Eliminando duplicados…");
+    const borrarIds=new Set(aBorrar.map(r=>r.id));
+    let n=0;
+    for(const r of aBorrar){ try{ await col.doc(r.id).delete(); n++; }catch(e){ console.warn("borrar nube:",e); } }
+    const nuevo=getLibrary().filter(r=> r&&r.id && !borrarIds.has(r.id));
+    setLibrary(nuevo);
+    if(document.getElementById("libModal").classList.contains("open")) renderLibrary();
+    updateBackupInfo();
+    setStatus(`Limpieza completa: ${n} duplicados eliminados`);
+    alert(`Listo. Se eliminaron ${n} duplicados; se conservó la copia más reciente de cada expediente.`);
+  }catch(e){ console.error("limpiarDuplicados:",e); setStatus("Error al limpiar duplicados"); alert("Ocurrió un error al limpiar duplicados. No se completó la operación."); }
+}
 function closeLibrary(){document.getElementById("libModal").classList.remove("open");}
 function renderLibrary(){
   const q=slug(document.getElementById("libSearch").value);
@@ -5182,16 +5226,18 @@ function deleteRecord(id){
   deletePacienteRemoto(id);
 }
 async function exportLibrary(){
-  // Nube primero: el respaldo debe incluir los expedientes COMPLETOS, que viven en la nube
-  let lib=[];
+  // Respaldo robusto: combina expedientes COMPLETOS de la nube + los que aún están completos en local (sin subir)
+  const porId={};
+  getLibrary().forEach(r=>{ if(r&&r.id && r.data && typeof r.data==="object" && Object.keys(r.data).length) porId[r.id]=r; });
   if(FB && FB.user && FB.db){
     try{
       setStatus("Preparando respaldo desde la nube…");
       const snap=await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").get();
-      snap.forEach(d=>{ const r=d.data(); if(r&&r.id) lib.push(r); });
+      snap.forEach(d=>{ const r=d.data(); if(r&&r.id){ const ex=porId[r.id]; if(!ex || (r.savedAt||"")>=(ex.savedAt||"")) porId[r.id]=r; } });
     }catch(e){ console.warn("respaldo nube:",e); }
   }
-  if(!lib.length) lib=getLibrary(); // si no hay nube, respalda el índice local
+  let lib=Object.values(porId);
+  if(!lib.length) lib=getLibrary(); // último recurso: el índice
   if(!lib.length){alert("No hay pacientes para respaldar.");return;}
   const blob=new Blob([JSON.stringify({library:lib,exported:new Date().toISOString(),app:"preop",version:2},null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);const a=document.createElement("a");
@@ -6785,10 +6831,16 @@ function setSyncInfo(txt){const el=document.getElementById("syncInfo");if(el)el.
 
 // Los datos de pacientes se guardan SOLO en este dispositivo (no en la nube).
 async function pushPaciente(rec){
-  setStatus("Guardado ✓");
-  if(!FB||!FB.user||!FB.db||!rec||!rec.id) return;
-  try{ await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(rec.id).set(rec); }
-  catch(e){ console.warn("sync subir:",e); }
+  if(!FB||!FB.user||!FB.db||!rec||!rec.id){ setStatus("Guardado localmente (sin sesión de nube)"); return false; }
+  try{
+    await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(rec.id).set(rec);
+    setStatus("Guardado y sincronizado ✓");
+    return true;
+  }catch(e){
+    console.warn("sync subir:",e);
+    setStatus("Guardado localmente — ⚠ no se pudo subir a la nube");
+    return false;
+  }
 }
 async function deletePacienteRemoto(id){
   if(!FB||!FB.user||!FB.db||!id) return;
@@ -6800,19 +6852,25 @@ async function pullPacientes(){
   try{
     const col=FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes");
     const snap=await col.get();
-    const meta={}; const remSaved={};
-    snap.forEach(d=>{ const r=d.data(); if(r&&r.id){ meta[r.id]=metaDe(r); remSaved[r.id]=r.savedAt||""; } });
+    const enNube=new Set(); const remSaved={}; const resultado={};
+    snap.forEach(d=>{ const r=d.data(); if(r&&r.id){ enNube.add(r.id); remSaved[r.id]=r.savedAt||""; resultado[r.id]=metaDe(r); } });
     const local=getLibrary();
     for(const r of local){
       if(!r||!r.id) continue;
       const hasData = r.data && typeof r.data==="object" && Object.keys(r.data).length;
-      // Subir a la nube los expedientes completos que estén solo en local o sean más nuevos
-      if(hasData && (remSaved[r.id]===undefined || (r.savedAt||"")>remSaved[r.id])){
-        try{ await col.doc(r.id).set(r); }catch(e){}
+      if(hasData){
+        // Intentar subir a la nube los expedientes completos que falten o sean más nuevos
+        let subido = enNube.has(r.id) && (r.savedAt||"")<=(remSaved[r.id]||"");
+        if(!subido){
+          try{ await col.doc(r.id).set(r); subido=true; }catch(e){ subido=false; }
+        }
+        // Si subió -> índice; si NO -> conservar el expediente COMPLETO local (no perder datos)
+        resultado[r.id] = subido ? metaDe(r) : r;
+      } else if(resultado[r.id]===undefined){
+        resultado[r.id]=metaDe(r);
       }
-      if(meta[r.id]===undefined || (r.savedAt||"")>(remSaved[r.id]||"")) meta[r.id]=metaDe(r);
     }
-    setLibrary(Object.values(meta)); // guarda SOLO el índice localmente
+    setLibrary(Object.values(resultado));
     try{ updateBackupInfo(); }catch(e){}
   }catch(e){ console.warn("sync cargar:",e); }
 }
