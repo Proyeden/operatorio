@@ -3822,8 +3822,20 @@ function marcarLabsInvalidos(){
     } else if(msg){ msg.classList.remove("on"); el.title=""; }
   });
 }
+// Integridad de la firma: si el documento cambia después de firmado, se retira la firma.
+function verificarIntegridadFirma(){
+  if(typeof FIRMA_STATE!=="undefined" && FIRMA_STATE.firmado && FIRMA_STATE.firma){
+    let sig=""; try{ sig=dataSignature(); }catch(_e){ return; }
+    if(sig!==FIRMA_STATE.firma){
+      FIRMA_STATE.firmado=false;
+      FIRMA_STATE.firma="";
+      try{ setStatus("⚠ Se modificó el documento después de firmar: la firma se retiró. Vuelva a firmar."); }catch(_e){}
+    }
+  }
+}
 function calc(){
   try{ marcarLabsInvalidos(); }catch(_e){}
+  try{ verificarIntegridadFirma(); }catch(_e){}
   // reflejar autos en checkboxes visibles
   SCORE_ORDER.forEach(name=>{
     const def=SCORES[name];if(!def||!def.items)return;
@@ -4417,11 +4429,15 @@ function render(){
         const k=lineKey("tromboprofx",t);
         return {original:t,texto:LINE_EDIT[k]||t};
       });
-    const cuerpo=[
+    const cuerpoRaw=[
       ...info,
       ...seleccionTP.map(x=>x.texto),
       ...advertenciasTromboprofilaxis(seleccionTP,lineasTP)
     ];
+    // Evitar líneas repetidas (p. ej. "Enoxaparina y función renal", que puede venir
+    // tanto en la guía general como en las advertencias por fármaco seleccionado).
+    const _vistos=new Set();
+    const cuerpo=cuerpoRaw.filter(x=>{ if(_vistos.has(x))return false; _vistos.add(x); return true; });
     const aviso = seleccionTP.length ? "" : `<div class="muted">Seleccione la(s) opción(es) farmacológica(s) (•) en la sección «Tromboprofilaxis farmacológica» para incluirla(s) en la nota.</div>`;
     return `<h2>Tromboprofilaxis farmacológica</h2>
     <div class="muted" style="margin-bottom:5px">Alternativas para valoración por el equipo quirúrgico. Caprini: ${scoreTotal("Caprini")}. La indicación definitiva depende del procedimiento, riesgo hemorrágico y contraindicaciones.</div>
@@ -5062,12 +5078,25 @@ async function imprimirPaciente(){
     return;
   }
 
+  // Validar laboratorios ANTES que el perfil: un dato de laboratorio inválido o
+  // fuera de rango debe bloquear la impresión aunque el perfil del médico esté incompleto.
+  if (!validarLaboratoriosFinalizacion()) return;
   if (!validarPerfil(true)) return;
 
   const nombre = val("nombre").trim();
   if (!nombre) {
     alert("Escriba el nombre del paciente antes de imprimir.");
     return;
+  }
+
+  // Respaldo de integridad: no imprimir un documento firmado cuyos datos cambiaron tras la firma.
+  if (FIRMA_STATE.firmado && FIRMA_STATE.firma) {
+    let sigAhora = ""; try { sigAhora = dataSignature(); } catch (_e) {}
+    if (sigAhora !== FIRMA_STATE.firma) {
+      FIRMA_STATE.firmado = false; FIRMA_STATE.firma = ""; render();
+      alert("El documento se modificó después de firmar. Se retiró la firma; revísela y vuelva a firmar antes de imprimir.");
+      return;
+    }
   }
 
   try {
@@ -5750,6 +5779,7 @@ async function aplicarFirma(){
 
   if(!validarLaboratoriosFinalizacion())return;
   FIRMA_STATE.firmado=true;
+  FIRMA_STATE.firma=dataSignature();   // copia de los datos firmados (para detectar cambios posteriores)
 
   if(input)input.value="";
   if(mensaje)mensaje.textContent="";
@@ -5758,7 +5788,7 @@ async function aplicarFirma(){
   render();
   setStatus("Documento firmado ✓");
 }
-function quitarFirma(){FIRMA_STATE.firmado=false;render();setStatus("Firma retirada");}
+function quitarFirma(){FIRMA_STATE.firmado=false;FIRMA_STATE.firma="";render();setStatus("Firma retirada");}
 
 // ---- Huella / WebAuthn ----
 async function registrarHuella(){
@@ -5813,14 +5843,14 @@ async function firmarConHuella(){
       allowCredentials:[{type:"public-key",id:Uint8Array.from(atob(credId.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0))}],
       userVerification:"required",timeout:60000
     }});
-    if(assertion){if(!identidadFirmaVigente())return;if(!validarLaboratoriosFinalizacion())return;FIRMA_STATE.firmado=true;closeFirmaModal();render();setStatus("Documento firmado con huella ✓");}
+    if(assertion){if(!identidadFirmaVigente())return;if(!validarLaboratoriosFinalizacion())return;FIRMA_STATE.firmado=true;FIRMA_STATE.firma=dataSignature();closeFirmaModal();render();setStatus("Documento firmado con huella ✓");}
   }catch(e){
     // fallback: algunos navegadores rechazan el id codificado; intentar sin allowCredentials
     if(!identidadFirmaVigente())return;
     try{
       const assertion=await navigator.credentials.get({publicKey:{
         challenge:crypto.getRandomValues(new Uint8Array(32)),userVerification:"required",timeout:60000}});
-      if(assertion){if(!identidadFirmaVigente())return;if(!validarLaboratoriosFinalizacion())return;FIRMA_STATE.firmado=true;closeFirmaModal();render();setStatus("Documento firmado con huella ✓");}
+      if(assertion){if(!identidadFirmaVigente())return;if(!validarLaboratoriosFinalizacion())return;FIRMA_STATE.firmado=true;FIRMA_STATE.firma=dataSignature();closeFirmaModal();render();setStatus("Documento firmado con huella ✓");}
     }catch(e2){alert("No se pudo verificar la huella: "+(e2.message||e2));}
   }
 }
@@ -7155,8 +7185,15 @@ function limpiarIdentidadSesion() {
 }
 
 // listener de estado de sesion
+let SESION_UID_INICIALIZADA=null; // uid con inicialización clínica ya completada
 if(FB.ready){
   FB.auth.onAuthStateChanged(async user=>{
+    // Un refire de onAuthStateChanged con el MISMO usuario (p. ej. al revalidar el token)
+    // NO debe re-ejecutar la inicialización ni limpiar el formulario: eso borraría lo que
+    // el médico ya escribió. Solo re-inicializamos si el usuario cambia o cierra sesión.
+    if (user && SESION_UID_INICIALIZADA === user.uid) {
+      return;
+    }
     const generacion=aptusNuevaGeneracionSesion();
 
     // Bloquear antes de modificar o restaurar datos clinicos.
@@ -7178,6 +7215,7 @@ if(FB.ready){
     refreshAuthModal();
 
     if(!user){
+      SESION_UID_INICIALIZADA=null;
       hideLicenseGate();
       mostrarAdminBtn(false);
       showGate();
@@ -7274,11 +7312,14 @@ if(FB.ready){
       const boton=document.getElementById("gateBtn");
       if(boton)boton.disabled=false;
 
+      SESION_UID_INICIALIZADA = user.uid; // init completo: ignorar refires del mismo usuario
+
     } catch(error) {
       if(!aptusSesionVigente(user,generacion)){
         return;
       }
 
+      SESION_UID_INICIALIZADA=null;
       limpiarIdentidadSesion();
       invalidarFirmaSesion();
       limpiarFormularioClinico();
