@@ -128,6 +128,9 @@
   .field input,.field select,.field textarea{transition:border-color .15s,box-shadow .15s,background .15s}
   .field textarea{resize:vertical;min-height:44px}
   .hint{font-size:11px;color:var(--muted);font-style:italic;margin-top:2px}
+  .field input.lab-bad,.field select.lab-bad{border-color:#d33!important;background:#fff3f3!important;box-shadow:0 0 0 2px rgba(211,51,51,.18)}
+  .lab-bad-msg{font-size:11px;color:#c0392b;font-weight:600;margin-top:2px;display:none}
+  .lab-bad-msg.on{display:block}
   /* ---- Score blocks ---- */
   .score{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
   .score-head{display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -910,7 +913,7 @@
       </div>
       <div class="grid3">
         <div class="field"><label>Peso</label><input type="text" inputmode="decimal" id="peso" oninput="calc()"></div>
-        <div class="field"><label>Unidad</label><select id="peso_u" onchange="calc()"><option>lb</option><option>kg</option></select></div>
+        <div class="field"><label>Unidad</label><select id="peso_u" onchange="calc()"><option>kg</option><option>lb</option></select></div>
         <div class="field"><label>Talla (cm)</label><input type="number" id="talla" oninput="calc()"></div>
       </div>
       <div class="hint" id="antropo_hint"></div>
@@ -2854,7 +2857,12 @@ function planTromboprofilaxis(){
       P.push("\u2022 Rivaroxab\u00e1n 10 mg VO cada 24 h: alternativa profil\u00e1ctica para artroplastia cuando corresponda. Verificar indicaci\u00f3n aprobada, momento de inicio, funci\u00f3n renal, riesgo hemorr\u00e1gico y protocolo institucional.");
       P.push("\u2022 Dabigatr\u00e1n: alternativa profil\u00e1ctica para artroplastia solo cuando exista indicaci\u00f3n aprobada localmente. Confirmar dosis, esquema inicial, aclaramiento de creatinina, momento de inicio y protocolo institucional antes de prescribir.");
     }
-  P.push("Se prefiere HBPM sobre heparina no fraccionada: menos inyecciones y menor riesgo de trombocitopenia inducida por heparina.");
+  const _crclTP=crclCockcroftGault();
+  if(_crclTP===null||_crclTP>=30){
+    P.push("Se prefiere HBPM sobre heparina no fraccionada: menos inyecciones y menor riesgo de trombocitopenia inducida por heparina.");
+  }else{
+    P.push("Función renal reducida (CrCl <30 mL/min): en este paciente preferir heparina no fraccionada o HBPM con ajuste de dosis; no aplicar la preferencia general por HBPM sin ajustar.");
+  }
   P.push("Inicio de profilaxis farmacológica: individualizar según procedimiento, hemostasia, riesgo trombótico y hemorrágico, y protocolo institucional. No indicar automáticamente el inicio preoperatorio por encamamiento o riesgo trombótico elevado.");
   // duración
   let dur="Duración: mantener hasta la deambulación plena, habitualmente 7-10 días.";
@@ -3782,13 +3790,40 @@ function autoSugerirDesdeCirugia(t){
   // Cirugía mayor (>45 min): 2 pts Caprini, para que la tromboprofilaxis se active en cirugías mayores
   const MAYOR_C2=new Set(["Vesícula (lap)","Ginecológica","Urológica (RTU)","Abdominal mayor","Vascular mayor","Bariátrica","Trauma mayor","Columna","Cabeza y cuello/tiroides"]);
   setChk("c2", MAYOR_C2.has(t));
+  // Cirugía menor programada: 1 pt Caprini (editable). Solo cirugías menores; no se solapa con c2/c3.
+  const MENOR_C1=new Set(["Oftalmológica","Dermatológica/plástica menor","Endoscopía con sedación","Mama","Hernia de pared","Ortopedia menor"]);
+  setChk("c1", MENOR_C1.has(t));
   // 3) ARISCAT hereda la incisión (editable; value = puntaje)
   const ai=document.getElementById("ar_inc");
   if(ai){
-    ai.value=(t==="Abdominal mayor"||t==="Bariátrica"||t==="Vascular mayor")?"15":"0"; // 15=Abdominal alta, 0=Periférica
+    ai.value=(t==="Abdominal mayor"||t==="Bariátrica"||t==="Vascular mayor"||t==="Vesícula (lap)")?"15":"0"; // 15=Abdominal alta (incl. colecistectomía lap., por sitio ARISCAT), 0=Periférica. Editable.
   }
 }
+function marcarLabsInvalidos(){
+  const etiquetas={
+    l_bili:"bilirrubina",l_inr:"INR",l_cr:"creatinina",l_alb:"albúmina",l_na:"sodio",
+    l_k:"potasio",l_hb:"hemoglobina",l_hto:"hematócrito",l_glu:"glucosa",l_bun:"BUN",
+    l_wbc:"leucocitos",l_plt:"plaquetas",l_neu:"neutrófilos"
+  };
+  Object.keys(LAB_NUMERICOS).forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    let bad=false, estado="";
+    try{ if(val(id)){ estado=estadoLaboratorio(id).estado; bad=(estado==="invalido"||estado==="incompleto"||estado==="fuera_rango"); } }catch(_e){}
+    el.classList.toggle("lab-bad",bad);
+    // mensaje bajo el campo
+    let msg=el.parentElement?el.parentElement.querySelector(".lab-bad-msg"):null;
+    if(bad){
+      if(!msg){ msg=document.createElement("div"); msg.className="lab-bad-msg"; el.insertAdjacentElement("afterend",msg); }
+      msg.textContent = estado==="fuera_rango"
+        ? "Valor fuera de rango fisiológico — revise el dato."
+        : "Valor inválido o incompleto — corríjalo para guardar, firmar o imprimir.";
+      msg.classList.add("on");
+      el.title=msg.textContent;
+    } else if(msg){ msg.classList.remove("on"); el.title=""; }
+  });
+}
 function calc(){
+  try{ marcarLabsInvalidos(); }catch(_e){}
   // reflejar autos en checkboxes visibles
   SCORE_ORDER.forEach(name=>{
     const def=SCORES[name];if(!def||!def.items)return;
@@ -4232,7 +4267,12 @@ function render(){
       <td>${esc(interp(name))}</td></tr>`;
   }).join("") : `<tr><td colspan="4" style="text-align:center;color:#93a0ac;font-style:italic;padding:12px">Sin escalas seleccionadas para la nota.</td></tr>`;
 
-  const labVal=(id,unidad)=>{const v=val(id);return v?esc(v)+(unidad?" "+unidad:""):"—";};
+  const labVal=(id,unidad)=>{
+    const v=val(id);
+    if(!v) return "—";
+    try{ if(Object.prototype.hasOwnProperty.call(LAB_NUMERICOS,id) && estadoLaboratorio(id).estado!=="valido") return "—"; }catch(_e){}
+    return esc(v)+(unidad?" "+unidad:"");
+  };
 
   const note=`
   <div class="note-hd">
@@ -4499,7 +4539,10 @@ function render(){
     const bloque=(t,arr)=>{const L=filtLines("delirium",arr);return L.length?`<div class="arr-sub">${t}</div><div class="recs">${L.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:"";};
     const cuerpo=bloque("Consideraciones",p.general)+bloque("Conducta / prevención",p.conducta);
     if(!cuerpo)return "";
-    return `<h2>Prevención de delirium postoperatorio</h2><div class="muted" style="margin-bottom:5px">Adulto mayor con fragilidad (CFS / mFI-5)</div>${cuerpo}`;})()}
+    const _ed=num("edad");
+    const _fragil=(_ed!==null&&_ed>=65)&&(scoreTotal("mFI-5")>=2||(parseInt(val("cfs_sel"))||0)>=5);
+    const _sub=_fragil?"Adulto mayor con fragilidad (CFS≥5 o mFI-5≥2)":"Riesgo identificado por evaluación clínica (deterioro cognitivo / factores de vulnerabilidad)";
+    return `<h2>Prevención de delirium postoperatorio</h2><div class="muted" style="margin-bottom:5px">${_sub}</div>${cuerpo}`;})()}
 
   ${(function(){const a=auditC();if(!a)return "";
     const txt = a.positivo
