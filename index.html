@@ -4840,15 +4840,21 @@ function setLibrary(l){
     throw new Error("No se puede guardar sin una sesion valida");
   }
 
+  const clave = clavePrivada(LIB_KEY);
+  const payload = JSON.stringify(l);
   try {
-    localStorage.setItem(
-      clavePrivada(LIB_KEY),
-      JSON.stringify(l)
-    );
+    localStorage.setItem(clave, payload);
   } catch (e) {
-    console.error("Error al guardar biblioteca:", e);
-    alert("No se pudo guardar la valoracion. Verifique el almacenamiento.");
-    throw e;
+    // Cuota excedida: liberar el respaldo de migración (ya no necesario) y reintentar
+    try { localStorage.removeItem(clavePrivada(LIB_KEY + "_pre_migracion_uuid")); } catch(_e){}
+    try {
+      localStorage.setItem(clave, payload);
+      return;
+    } catch (e2) {
+      console.error("Error al guardar biblioteca:", e2);
+      alert("No se pudo guardar: el almacenamiento local del navegador está lleno. Exporte un respaldo (botón Respaldo) y elimine expedientes antiguos para liberar espacio.");
+      throw e2;
+    }
   }
 }
 function slug(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
