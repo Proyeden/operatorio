@@ -724,6 +724,7 @@
         <button class="menu-item" onclick="menuDo(newPatient)">＋ Nuevo paciente</button>
         <button class="menu-item" id="btnQuickSave" onclick="menuDo(quickSave)">💾 Guardar</button>
         <button class="menu-item" onclick="menuDo(openLibraryModal)">📂 Abrir paciente…</button>
+        <button class="menu-item" onclick="menuDo(sincronizarNube)">☁️ Sincronizar con la nube</button>
       </div>
     </div>
 
@@ -4790,6 +4791,8 @@ function newPatient(){
 // Los expedientes se aíslan por UID. Los datos antiguos sin UID no se cargan automáticamente.
 function clavePrivada(nombre){return FB && FB.user && FB.user.uid ? nombre+":"+FB.user.uid : "aptus_sin_sesion_bloqueado";}
 const LIB_KEY="preop_library";
+const FULL_CACHE={}; // caché en memoria de expedientes completos (modo "nube primero")
+function metaDe(r){ return {id:r.id,pacienteId:r.pacienteId,nombre:r.nombre,fechaEval:r.fechaEval,savedAt:r.savedAt}; }
 function getLibrary(){
   try {
     if (!FB || !FB.user || !FB.user.uid) return [];
@@ -4841,7 +4844,8 @@ function setLibrary(l){
   }
 
   const clave = clavePrivada(LIB_KEY);
-  const payload = JSON.stringify(l);
+  // Nube primero: localmente solo guardamos el índice (metadata); el expediente completo vive en la nube.
+  const payload = JSON.stringify((l||[]).map(metaDe));
   try {
     localStorage.setItem(clave, payload);
   } catch (e) {
@@ -4944,6 +4948,7 @@ async function guardarValoracionAPTUS(modoRapido = false) {
       lib.push(rec);
     }
 
+    FULL_CACHE[id] = rec.data; // caché local del expediente completo (nube primero)
     setLibrary(lib);
 
     updateBackupInfo();
@@ -5049,7 +5054,30 @@ async function imprimirPaciente(){
 }
 function fmtDate(iso){try{return new Date(iso).toLocaleString("es-GT",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return iso;}}
 
-function openLibraryModal(){document.getElementById("libModal").classList.add("open");document.getElementById("libSearch").value="";renderLibrary();updateBackupInfo();}
+async function openLibraryModal(){
+  document.getElementById("libModal").classList.add("open");
+  document.getElementById("libSearch").value="";
+  renderLibrary(); updateBackupInfo();
+  // Traer de la nube al abrir la biblioteca (para ver expedientes de otros equipos)
+  if(FB && FB.user){
+    try{
+      setStatus("Sincronizando con la nube…");
+      await pullPacientes();
+      renderLibrary(); updateBackupInfo();
+      setStatus("Biblioteca actualizada desde la nube ✓");
+    }catch(e){ console.warn("sync al abrir biblioteca:",e); }
+  }
+}
+async function sincronizarNube(){
+  if(!FB || !FB.user){ alert("Inicie sesión para sincronizar con la nube."); return; }
+  try{
+    setStatus("Sincronizando con la nube…");
+    await pullPacientes();
+    if(document.getElementById("libModal").classList.contains("open")) renderLibrary();
+    updateBackupInfo();
+    setStatus("Sincronizado con la nube ✓");
+  }catch(e){ console.warn("sincronizarNube:",e); setStatus("No se pudo sincronizar con la nube"); }
+}
 function closeLibrary(){document.getElementById("libModal").classList.remove("open");}
 function renderLibrary(){
   const q=slug(document.getElementById("libSearch").value);
@@ -5065,7 +5093,7 @@ function renderLibrary(){
       <button class="lib-del" onclick="deleteRecord('${r.id}')">Borrar</button>
     </div></div>`).join("");
 }
-function loadRecord(id){
+async function loadRecord(id){
   const user = FB && FB.user;
   const generacion = APTUS_SESSION_GENERATION;
 
@@ -5090,6 +5118,21 @@ function loadRecord(id){
   )){
     return;
   }
+
+  // Nube primero: traer el expediente completo (del caché o de la nube) antes de activarlo
+  let __data = (rec.data && typeof rec.data==="object" && Object.keys(rec.data).length) ? rec.data : FULL_CACHE[rec.id];
+  if(!__data && FB && FB.user && FB.db){
+    try{
+      setStatus("Abriendo desde la nube…");
+      const snap = await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(rec.id).get();
+      if(snap.exists){ const dd=snap.data(); if(dd && dd.data) __data=dd.data; }
+    }catch(e){ console.warn("abrir desde nube:",e); }
+  }
+  if(!__data){
+    alert("No se pudo cargar el expediente completo. Revise su conexión a internet e intente de nuevo.");
+    return;
+  }
+  FULL_CACHE[rec.id] = __data;
 
   const contexto = APTUS_IDENTITY_CONTEXT;
   const identidadAnterior = contexto.valoraciones.obtenerActual();
@@ -5128,7 +5171,7 @@ function loadRecord(id){
   // Cada valoracion requiere una nueva autorizacion de firma.
   invalidarFirmaSesion();
 
-  applyData(rec.data);
+  applyData(__data);
   closeLibrary();
   markSaved();
   setStatus("Paciente cargado");
@@ -5138,8 +5181,17 @@ function deleteRecord(id){
   setLibrary(getLibrary().filter(r=>r.id!==id));renderLibrary();
   deletePacienteRemoto(id);
 }
-function exportLibrary(){
-  const lib=getLibrary();
+async function exportLibrary(){
+  // Nube primero: el respaldo debe incluir los expedientes COMPLETOS, que viven en la nube
+  let lib=[];
+  if(FB && FB.user && FB.db){
+    try{
+      setStatus("Preparando respaldo desde la nube…");
+      const snap=await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").get();
+      snap.forEach(d=>{ const r=d.data(); if(r&&r.id) lib.push(r); });
+    }catch(e){ console.warn("respaldo nube:",e); }
+  }
+  if(!lib.length) lib=getLibrary(); // si no hay nube, respalda el índice local
   if(!lib.length){alert("No hay pacientes para respaldar.");return;}
   const blob=new Blob([JSON.stringify({library:lib,exported:new Date().toISOString(),app:"preop",version:2},null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);const a=document.createElement("a");
@@ -5172,6 +5224,7 @@ function importFileToLibrary(ev){
         const lib=getLibrary();
         let nuevos=0, actualizados=0;
 
+        const aSubir=[];
         importados.forEach(rec=>{
           const i=lib.findIndex(x=>x.id===rec.id);
           if(i>=0){
@@ -5180,16 +5233,26 @@ function importFileToLibrary(ev){
             if(entra>=local){
               lib[i]=rec;
               actualizados++;
+              FULL_CACHE[rec.id]=rec.data; aSubir.push(rec);
             }
           }else{
             lib.push(rec);
             nuevos++;
+            FULL_CACHE[rec.id]=rec.data; aSubir.push(rec);
           }
         });
 
-        setLibrary(lib);
+        setLibrary(lib); // guarda el índice local
         renderLibrary();
         setStatus(`Importados: ${nuevos} nuevos, ${actualizados} actualizados`);
+        // Nube primero: subir los expedientes completos importados a la nube
+        if(FB && FB.user && FB.db && aSubir.length){
+          (async()=>{
+            const col=FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes");
+            for(const rec of aSubir){ try{ await col.doc(rec.id).set(rec); }catch(e){} }
+            try{ setStatus(`Importados y sincronizados a la nube: ${nuevos} nuevos, ${actualizados} actualizados`); }catch(e){}
+          })();
+        }
 
       }else if(obj.fields){
         applyData(obj);
@@ -6735,15 +6798,21 @@ async function deletePacienteRemoto(id){
 async function pullPacientes(){
   if(!FB||!FB.user||!FB.db) return;
   try{
-    const snap=await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").get();
-    const remotos=[]; snap.forEach(d=>{ const r=d.data(); if(r&&r.id) remotos.push(r); });
+    const col=FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes");
+    const snap=await col.get();
+    const meta={}; const remSaved={};
+    snap.forEach(d=>{ const r=d.data(); if(r&&r.id){ meta[r.id]=metaDe(r); remSaved[r.id]=r.savedAt||""; } });
     const local=getLibrary();
-    const porId={};
-    local.forEach(r=>{ if(r&&r.id) porId[r.id]=r; });
-    remotos.forEach(r=>{ const ex=porId[r.id]; if(!ex || (r.savedAt||"")>=(ex.savedAt||"")) porId[r.id]=r; });
-    setLibrary(Object.values(porId));
-    const idsRemotos=new Set(remotos.map(r=>r.id));
-    for(const r of local){ if(r&&r.id&&!idsRemotos.has(r.id)){ try{ await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(r.id).set(r); }catch(e){} } }
+    for(const r of local){
+      if(!r||!r.id) continue;
+      const hasData = r.data && typeof r.data==="object" && Object.keys(r.data).length;
+      // Subir a la nube los expedientes completos que estén solo en local o sean más nuevos
+      if(hasData && (remSaved[r.id]===undefined || (r.savedAt||"")>remSaved[r.id])){
+        try{ await col.doc(r.id).set(r); }catch(e){}
+      }
+      if(meta[r.id]===undefined || (r.savedAt||"")>(remSaved[r.id]||"")) meta[r.id]=metaDe(r);
+    }
+    setLibrary(Object.values(meta)); // guarda SOLO el índice localmente
     try{ updateBackupInfo(); }catch(e){}
   }catch(e){ console.warn("sync cargar:",e); }
 }
