@@ -5072,11 +5072,11 @@ async function openLibraryModal(){
   // Traer de la nube al abrir la biblioteca (para ver expedientes de otros equipos)
   if(FB && FB.user){
     try{
-      setStatus("Sincronizando con la nube…");
-      await pullPacientes();
+      setStatus("Actualizando lista desde la nube…");
+      await pullIndiceNube();
       renderLibrary(); updateBackupInfo();
-      setStatus("Biblioteca actualizada desde la nube ✓");
-    }catch(e){ console.warn("sync al abrir biblioteca:",e); }
+      setStatus("");
+    }catch(e){ console.warn("índice al abrir biblioteca:",e); }
   }
 }
 async function sincronizarNube(){
@@ -6857,6 +6857,19 @@ async function deletePacienteRemoto(id){
   try{ await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(id).delete(); }
   catch(e){ console.warn("sync borrar:",e); }
 }
+// Descarga RÁPIDA del índice de la nube (no sube nada). Para abrir la lista / iniciar sesión.
+async function pullIndiceNube(){
+  if(!FB||!FB.user||!FB.db) return;
+  try{
+    const snap=await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").get();
+    const resultado={};
+    snap.forEach(d=>{ const r=d.data(); if(r&&r.id) resultado[r.id]=metaDe(r); });
+    // conservar los locales que aún no están en la nube (pendientes, con expediente completo)
+    getLibrary().forEach(r=>{ if(r&&r.id && resultado[r.id]===undefined) resultado[r.id]=r; });
+    setLibrary(Object.values(resultado));
+  }catch(e){ console.warn("descargar índice:",e); }
+}
+// Sincronización COMPLETA: descarga índice y SUBE los pendientes (puede tardar). Acción explícita.
 async function pullPacientes(){
   if(!FB||!FB.user||!FB.db) return;
   try{
@@ -6865,13 +6878,17 @@ async function pullPacientes(){
     const enNube=new Set(); const remSaved={}; const resultado={};
     snap.forEach(d=>{ const r=d.data(); if(r&&r.id){ enNube.add(r.id); remSaved[r.id]=r.savedAt||""; resultado[r.id]=metaDe(r); } });
     const local=getLibrary();
+    const yaSync=r=> enNube.has(r.id) && (r.savedAt||"")<=(remSaved[r.id]||"");
+    const totalPend = local.filter(r=> r && r.id && r.data && typeof r.data==="object" && Object.keys(r.data).length && !yaSync(r)).length;
+    let subidos=0;
     for(const r of local){
       if(!r||!r.id) continue;
       const hasData = r.data && typeof r.data==="object" && Object.keys(r.data).length;
       if(hasData){
         // Intentar subir a la nube los expedientes completos que falten o sean más nuevos
-        let subido = enNube.has(r.id) && (r.savedAt||"")<=(remSaved[r.id]||"");
+        let subido = yaSync(r);
         if(!subido){
+          subidos++; if(totalPend) setStatus(`Subiendo ${subidos} de ${totalPend} a la nube…`);
           try{ await col.doc(r.id).set(r); subido=true; }catch(e){ subido=false; }
         }
         // Si subió -> índice; si NO -> conservar el expediente COMPLETO local (no perder datos)
@@ -7163,18 +7180,29 @@ if(FB.ready){
 
       render();
 
-      // Recuperar la referencia del ultimo guardado definitivo.
-      // El borrador clinico no se considera guardado automaticamente.
+      // Recuperar la referencia del ultimo guardado definitivo (nube primero).
       LAST_SAVED_SNAPSHOT = "";
+      LAST_PUSH_OK = false;
 
       if (identidadClinica) {
         const registroGuardado = getLibrary().find(
           r => r.id === identidadClinica.id &&
                r.pacienteId === identidadClinica.pacienteId
         );
-
-        if (registroGuardado && registroGuardado.data) {
-          LAST_SAVED_SNAPSHOT = JSON.stringify(registroGuardado.data);
+        if (registroGuardado) {
+          let savedData = (registroGuardado.data && typeof registroGuardado.data==="object" && Object.keys(registroGuardado.data).length) ? registroGuardado.data : null;
+          let synced = !savedData; // solo-índice => ya está sincronizado en la nube
+          if (!savedData && FB && FB.user && FB.db) {
+            try {
+              const snap = await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(registroGuardado.id).get();
+              if (snap.exists) { const dd = snap.data(); if (dd && dd.data) { savedData = dd.data; synced = true; } }
+            } catch (e) { console.warn("estado guardado desde nube:", e); }
+          }
+          if (savedData) {
+            LAST_SAVED_SNAPSHOT = JSON.stringify(savedData);
+            FULL_CACHE[registroGuardado.id] = savedData;
+            LAST_PUSH_OK = synced;
+          }
         }
       }
 
@@ -7185,7 +7213,7 @@ if(FB.ready){
       }
 
       aplicarAcceso();
-      try{ await pullPacientes(); render(); }catch(e){}
+      try{ await pullIndiceNube(); render(); }catch(e){}
 
       const boton=document.getElementById("gateBtn");
       if(boton)boton.disabled=false;
