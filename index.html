@@ -4671,8 +4671,16 @@ function autosave() {
 // ---- Indicador de estado de guardado ----
 let LAST_SAVED_SNAPSHOT="";   // firma de los datos tal como se guardaron por última vez
 let LAST_PUSH_OK=false;       // true si el expediente actual está sincronizado en la nube
+// Firma estable: serializa con las claves ordenadas, para que el orden de los campos
+// (p. ej. el que devuelve Firestore vs. el del formulario) no cuente como "cambio".
+function firmaEstable(obj){
+  return JSON.stringify(obj, (k, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.keys(v).sort().reduce((o, kk) => (o[kk] = v[kk], o), {})
+      : v);
+}
 function dataSignature(){
-  try{return JSON.stringify(collectData());}catch(e){return "";}
+  try{return firmaEstable(collectData());}catch(e){return "";}
 }
 function markSaved(){ LAST_SAVED_SNAPSHOT=dataSignature(); updateSaveState(); }
 function updateSaveState(){
@@ -7199,7 +7207,7 @@ if(FB.ready){
             } catch (e) { console.warn("estado guardado desde nube:", e); }
           }
           if (savedData) {
-            LAST_SAVED_SNAPSHOT = JSON.stringify(savedData);
+            LAST_SAVED_SNAPSHOT = firmaEstable(savedData);
             FULL_CACHE[registroGuardado.id] = savedData;
             LAST_PUSH_OK = synced;
           }
