@@ -2500,28 +2500,50 @@ const LAB_NUMERICOS={
   l_inr:false,
   l_cr:false,
   l_alb:false,
-  l_na:false
+  l_na:false,
+  l_k:false,
+  l_hb:false,
+  l_hto:false,
+  l_glu:false,
+  l_bun:false,
+  l_wbc:false,
+  l_plt:false,
+  l_neu:true
+};
+// Rangos fisiológicos (límites "imposibles": fuera de esto es casi seguro un error de tipeo)
+const RANGO_FISIOLOGICO={
+  l_cr:[0.1,25], l_bun:[1,300], l_glu:[10,2000],
+  l_na:[90,200], l_k:[1.5,10], l_alb:[0.5,7], l_bili:[0,60],
+  l_hb:[2,25], l_hto:[5,70], l_wbc:[0.05,1000], l_plt:[1,3000],
+  l_neu:[0,100], l_inr:[0.5,20], l_tp:[1,200], l_tpt:[1,300]
 };
 function estadoLaboratorio(id){
   if(!Object.prototype.hasOwnProperty.call(LAB_NUMERICOS,id))
     throw new Error("Laboratorio no autorizado: "+id);
-  return analizarNumeroLaboratorio(val(id),LAB_NUMERICOS[id]);
+  const r=analizarNumeroLaboratorio(val(id),LAB_NUMERICOS[id]);
+  if(r.estado==="valido" && RANGO_FISIOLOGICO[id]){
+    const [min,max]=RANGO_FISIOLOGICO[id];
+    if(r.valor<min||r.valor>max) return {estado:"fuera_rango",valor:null};
+  }
+  return r;
 }
 function numeroLaboratorio(id){
   return estadoLaboratorio(id).valor;
 }
 function erroresLaboratoriosFinalizacion(){
   const etiquetas={
-    l_bili:"bilirrubina",
-    l_inr:"INR",
-    l_cr:"creatinina",
-    l_alb:"albúmina",
-    l_na:"sodio"
+    l_bili:"bilirrubina", l_inr:"INR", l_cr:"creatinina", l_alb:"albúmina", l_na:"sodio",
+    l_k:"potasio", l_hb:"hemoglobina", l_hto:"hematócrito", l_glu:"glucosa", l_bun:"BUN",
+    l_wbc:"leucocitos", l_plt:"plaquetas", l_neu:"neutrófilos"
   };
+  // Críticos: también se exige corregir si están incompletos o inválidos
+  const criticos=new Set(["l_bili","l_inr","l_cr","l_alb","l_na"]);
   const errores=[];
   for(const [id,etiqueta] of Object.entries(etiquetas)){
     const estado=estadoLaboratorio(id).estado;
-    if(estado==="invalido"||estado==="incompleto"){
+    if(estado==="fuera_rango"){
+      errores.push({id,etiqueta,estado});
+    } else if(criticos.has(id) && (estado==="invalido"||estado==="incompleto")){
       errores.push({id,etiqueta,estado});
     }
   }
@@ -2814,7 +2836,7 @@ function planTromboprofilaxis(){
   const cap=scoreTotal("Caprini"), tipo=val("tipo");
   if(cap<3)return [];   // riesgo bajo: mecánica/deambulación
   const P=[], bmi=imc(), tfg=num("at_tfg"), cr=numeroLaboratorio("l_cr");
-  P.push("Opciones farmacológicas (elegir una):");
+  P.push("Opciones farmacológicas (el médico tratante selecciona según disponibilidad del hospital y el paciente; puede incluirse más de una):");
   P.push("• Enoxaparina 40 mg SC cada 24 h: pauta profiláctica habitual orientativa, sujeta a validación según procedimiento, riesgo hemorrágico, peso y función renal.");
   P.push("Enoxaparina y función renal: antes de seleccionar la dosis, validar el aclaramiento de creatinina (CrCl, mL/min) y la estabilidad renal. Si CrCl <30 mL/min, considerar ajuste de dosis o alternativa según indicación y protocolo institucional. No utilizar aisladamente creatinina sérica >2 mg/dL ni la TFG manual como equivalentes de CrCl.");
   const pesoActual=pesoKg();
@@ -3669,6 +3691,13 @@ function planAntitrombotico(){
       }else{
         P.push("Intervalos orientativos para cirugía de riesgo hemorrágico bajo-moderado: CrCl ≥50 mL/min, suspender 1 día antes; CrCl 30-49 mL/min, suspender 3 días antes. Individualizar si CrCl <30 mL/min, función renal inestable o anestesia neuroaxial.");
       }
+      if(tfg!==null){
+        let rec;
+        if(tfg<30) rec="CrCl <30 mL/min: individualizar (intervalo más prolongado; valorar con el equipo y considerar alternativa).";
+        else if(tfg<50) rec=(sang==="Alto")?"suspender 4 días antes.":"suspender 3 días antes.";
+        else rec=(sang==="Alto")?"suspender 2 días antes.":"suspender 1 día antes.";
+        P.push(`Según el CrCl estimado del paciente (${Math.round(tfg)} mL/min): ${rec} Valor editable con el campo «TFG estimada» de esta sección.`);
+      }
     } else {
       const h = (sang==="Alto")?48:24;
       P.push(`${ac}: suspender ${h} horas antes del procedimiento (${h===48?"2 días":"1 día"}), sin necesidad de medir niveles de rutina.`);
@@ -3745,8 +3774,11 @@ function autoSugerirDesdeCirugia(t){
   };
   const rq=document.getElementById("riesgoq");
   if(rq && RIESGO_SUG[t]!==undefined) rq.value=RIESGO_SUG[t];
-  // 2) Tromboprofilaxis en artroplastia: pre-marca el ítem Caprini (editable)
-  setChk("c3", t==="Artroplastia cadera/rodilla");
+  // 2) Tromboprofilaxis: pre-marca ítems Caprini (editable)
+  setChk("c3", t==="Artroplastia cadera/rodilla"); // artroplastia mayor (5 pts)
+  // Cirugía mayor (>45 min): 2 pts Caprini, para que la tromboprofilaxis se active en cirugías mayores
+  const MAYOR_C2=new Set(["Vesícula (lap)","Ginecológica","Urológica (RTU)","Abdominal mayor","Vascular mayor","Bariátrica","Trauma mayor","Columna","Cabeza y cuello/tiroides"]);
+  setChk("c2", MAYOR_C2.has(t));
   // 3) ARISCAT hereda la incisión (editable; value = puntaje)
   const ai=document.getElementById("ar_inc");
   if(ai){
@@ -4347,7 +4379,7 @@ function render(){
       ...seleccionTP.map(x=>x.texto),
       ...advertenciasTromboprofilaxis(seleccionTP,lineasTP)
     ];
-    const aviso = seleccionTP.length ? "" : `<div class="muted">Seleccione una opción farmacológica (•) en la sección «Tromboprofilaxis farmacológica» para incluirla en la nota.</div>`;
+    const aviso = seleccionTP.length ? "" : `<div class="muted">Seleccione la(s) opción(es) farmacológica(s) (•) en la sección «Tromboprofilaxis farmacológica» para incluirla(s) en la nota.</div>`;
     return `<h2>Tromboprofilaxis farmacológica</h2>
     <div class="muted" style="margin-bottom:5px">Alternativas para valoración por el equipo quirúrgico. Caprini: ${scoreTotal("Caprini")}. La indicación definitiva depende del procedimiento, riesgo hemorrágico y contraindicaciones.</div>
     ${cuerpo.length?`<div class="recs">${cuerpo.map(x=>`<div class="ri">${esc(x)}</div>`).join("")}</div>`:""}
