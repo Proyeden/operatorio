@@ -4670,6 +4670,7 @@ function autosave() {
 
 // ---- Indicador de estado de guardado ----
 let LAST_SAVED_SNAPSHOT="";   // firma de los datos tal como se guardaron por última vez
+let LAST_PUSH_OK=false;       // true si el expediente actual está sincronizado en la nube
 function dataSignature(){
   try{return JSON.stringify(collectData());}catch(e){return "";}
 }
@@ -4693,8 +4694,13 @@ function updateSaveState(){
     el.classList.add("dirty"); el.textContent="Cambios sin guardar";
     el.title="Hay cambios desde el último guardado. Clic para guardar.";
   } else if(FB && FB.user){
-    el.classList.add("cloud"); el.textContent="Guardado localmente";
-    el.title="Guardado en este dispositivo.";
+    if(LAST_PUSH_OK){
+      el.classList.add("cloud"); el.textContent="Guardado en la nube";
+      el.title="Guardado y sincronizado con su cuenta.";
+    } else {
+      el.classList.add("dirty"); el.textContent="Solo local ⚠";
+      el.title="Guardado en este dispositivo, pero no se pudo subir a la nube. Use «Sincronizar con la nube».";
+    }
   } else {
     el.classList.add("saved"); el.textContent="Guardado";
     el.title="Guardado en este dispositivo.";
@@ -4946,6 +4952,7 @@ async function guardarValoracionAPTUS(modoRapido = false) {
 
     FULL_CACHE[id] = rec.data; // caché en memoria del expediente completo
     const subido = await pushPaciente(rec); // nube primero: intenta subir
+    LAST_PUSH_OK = subido;
     // A prueba de fallos: si subió, local guarda solo el índice; si NO subió, guarda el expediente COMPLETO (no se pierde)
     const guardado = subido ? metaDe(rec) : rec;
     if (idx >= 0) {
@@ -5164,12 +5171,14 @@ async function loadRecord(id){
   }
 
   // Nube primero: traer el expediente completo (del caché o de la nube) antes de activarlo
-  let __data = (rec.data && typeof rec.data==="object" && Object.keys(rec.data).length) ? rec.data : FULL_CACHE[rec.id];
+  const __tieneLocal = rec.data && typeof rec.data==="object" && Object.keys(rec.data).length;
+  let __synced = !__tieneLocal; // si el índice guardaba el expediente completo, está pendiente de subir
+  let __data = __tieneLocal ? rec.data : FULL_CACHE[rec.id];
   if(!__data && FB && FB.user && FB.db){
     try{
       setStatus("Abriendo desde la nube…");
       const snap = await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").doc(rec.id).get();
-      if(snap.exists){ const dd=snap.data(); if(dd && dd.data) __data=dd.data; }
+      if(snap.exists){ const dd=snap.data(); if(dd && dd.data){ __data=dd.data; __synced=true; } }
     }catch(e){ console.warn("abrir desde nube:",e); }
   }
   if(!__data){
@@ -5217,6 +5226,7 @@ async function loadRecord(id){
 
   applyData(__data);
   closeLibrary();
+  LAST_PUSH_OK = __synced;
   markSaved();
   setStatus("Paciente cargado");
 }
