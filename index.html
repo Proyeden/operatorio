@@ -5109,8 +5109,8 @@ async function limpiarDuplicados(){
     // incluir expedientes completos que estén solo en local (aún no subidos)
     getLibrary().forEach(r=>{ if(r&&r.id && r.data && typeof r.data==="object" && Object.keys(r.data).length && !vistos.has(r.id)) full.push(r); });
     if(full.length<2){ alert("No hay suficientes expedientes para analizar duplicados."); setStatus(""); return; }
-    // agrupar por firma: nombre normalizado + datos idénticos
-    const firma=r=> slug(r.nombre||"") + "|" + JSON.stringify(r.data||{});
+    // agrupar por firma: nombre normalizado + datos idénticos (claves ordenadas, para no fallar por el orden de Firestore)
+    const firma=r=> slug(r.nombre||"") + "|" + firmaEstable(r.data||{});
     const grupos={};
     full.forEach(r=>{ const k=firma(r); (grupos[k]=grupos[k]||[]).push(r); });
     const aBorrar=[];
@@ -6872,8 +6872,14 @@ async function pullIndiceNube(){
     const snap=await FB.db.collection("usuarios").doc(FB.user.uid).collection("pacientes").get();
     const resultado={};
     snap.forEach(d=>{ const r=d.data(); if(r&&r.id) resultado[r.id]=metaDe(r); });
-    // conservar los locales que aún no están en la nube (pendientes, con expediente completo)
-    getLibrary().forEach(r=>{ if(r&&r.id && resultado[r.id]===undefined) resultado[r.id]=r; });
+    // conservar solo los locales con expediente COMPLETO que aún no están en la nube (pendientes reales);
+    // descartar huérfanos (entradas de índice sin datos que ya no existen en la nube)
+    getLibrary().forEach(r=>{
+      if(r&&r.id && resultado[r.id]===undefined){
+        const hasData = r.data && typeof r.data==="object" && Object.keys(r.data).length;
+        if(hasData) resultado[r.id]=r;
+      }
+    });
     setLibrary(Object.values(resultado));
   }catch(e){ console.warn("descargar índice:",e); }
 }
@@ -6901,9 +6907,8 @@ async function pullPacientes(){
         }
         // Si subió -> índice; si NO -> conservar el expediente COMPLETO local (no perder datos)
         resultado[r.id] = subido ? metaDe(r) : r;
-      } else if(resultado[r.id]===undefined){
-        resultado[r.id]=metaDe(r);
       }
+      // Si no tiene datos y no está en la nube => huérfano del índice: se descarta (no se agrega).
     }
     setLibrary(Object.values(resultado));
     try{ updateBackupInfo(); }catch(e){}
