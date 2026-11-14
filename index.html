@@ -1943,6 +1943,20 @@ function clinicaActual(){
 const PERFIL_CAMPOS=["cl_nombre","cl_dir","cl_tel","cl_email","cl_especialidad","cl_grado","cl_color1","cl_color2"];
 let IDENTIDAD_PROFESIONAL = null;
 
+// Versión PERSONAL: la identidad del médico es local (y se refleja en su propia nube si hay sesión).
+// No depende de un backend /api/, por lo que funciona también en hosting estático (GitHub Pages).
+function getIdentidadLocal(){
+  try{
+    const r = JSON.parse(localStorage.getItem(clavePrivada("preop_identidad")) || "null");
+    if(r && typeof r.nombreCompleto === "string" && typeof r.colegiado === "string" &&
+       r.nombreCompleto.trim() && r.colegiado.trim()) return { nombreCompleto:r.nombreCompleto, colegiado:r.colegiado };
+  }catch(e){}
+  return null;
+}
+function setIdentidadLocal(idp){
+  try{ localStorage.setItem(clavePrivada("preop_identidad"), JSON.stringify(idp)); }catch(e){}
+}
+
 async function pullIdentidadProfesional(){
   IDENTIDAD_PROFESIONAL = null;
 
@@ -1952,44 +1966,33 @@ async function pullIdentidadProfesional(){
   if(medEl){ medEl.value = ""; medEl.readOnly = true; }
   if(colEl){ colEl.value = ""; colEl.readOnly = true; }
 
-  if(!FB || !FB.user || !FB.db) return;
+  // 1) Si hay sesión, intentar la nube propia: usuarios/{uid}/identidad/profesional
+  if(FB && FB.user && FB.db){
+    try {
+      const uid = FB.user.uid;
+      const d = await FB.db.collection("usuarios").doc(uid)
+        .collection("identidad").doc("profesional").get();
+      if(d.exists){
+        const datos = d.data() || {};
+        if(datos.uid && datos.uid !== uid) throw new Error("UID de identidad no coincide");
+        if(typeof datos.nombreCompleto === "string" && typeof datos.colegiado === "string" &&
+           datos.nombreCompleto.trim() && datos.colegiado.trim()){
+          IDENTIDAD_PROFESIONAL = { nombreCompleto: datos.nombreCompleto, colegiado: datos.colegiado };
+          setIdentidadLocal(IDENTIDAD_PROFESIONAL); // espejo local
+        }
+      }
+    } catch(e){ console.warn("Identidad en la nube no disponible; se usará la copia local:", e); }
+  }
 
-  try {
-    const uid = FB.user.uid;
+  // 2) Si la nube no la tiene (o no hay sesión), usar la copia local.
+  if(!IDENTIDAD_PROFESIONAL){
+    const loc = getIdentidadLocal();
+    if(loc) IDENTIDAD_PROFESIONAL = loc;
+  }
 
-    const d = await FB.db.collection("usuarios")
-      .doc(uid)
-      .collection("identidad")
-      .doc("profesional")
-      .get();
-
-    if(!d.exists) return;
-
-    const datos = d.data() || {};
-
-    // Nunca aceptar una identidad vinculada a otro UID.
-    if(datos.uid !== uid) {
-      throw new Error("UID de identidad no coincide");
-    }
-
-    if(typeof datos.nombreCompleto !== "string" ||
-       typeof datos.colegiado !== "string" ||
-       !datos.nombreCompleto.trim() ||
-       !datos.colegiado.trim()) {
-      throw new Error("Identidad profesional incompleta");
-    }
-
-    IDENTIDAD_PROFESIONAL = {
-      nombreCompleto: datos.nombreCompleto,
-      colegiado: datos.colegiado
-    };
-
-    if(medEl) medEl.value = datos.nombreCompleto;
-    if(colEl) colEl.value = datos.colegiado;
-
-  } catch(e) {
-    IDENTIDAD_PROFESIONAL = null;
-    console.error("No se pudo cargar identidad profesional:", e);
+  if(IDENTIDAD_PROFESIONAL){
+    if(medEl) medEl.value = IDENTIDAD_PROFESIONAL.nombreCompleto;
+    if(colEl) colEl.value = IDENTIDAD_PROFESIONAL.colegiado;
   }
 }
 function getPerfil(){try{return JSON.parse(localStorage.getItem(clavePrivada("preop_perfil"))||"{}");}catch(e){return {};}}
@@ -6076,54 +6079,17 @@ async function registrarIdentidadProfesionalUI(){
   mensaje.textContent = "Registrando identidad profesional...";
 
   try {
-    const token = await usuario.getIdToken();
+    // Versión personal: registro LOCAL (sin backend /api/). Tu identidad es fija y propia.
+    IDENTIDAD_PROFESIONAL = { nombreCompleto, colegiado };
+    setIdentidadLocal(IDENTIDAD_PROFESIONAL);
 
-    if(!aptusSesionVigente(usuario,generacion)){
-      return;
-    }
-
-    const respuesta = await fetch("/api/registrarIdentidadProfesional",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer "+token
-      },
-      body:JSON.stringify({nombreCompleto,colegiado})
-    });
-
-    const resultado = await respuesta.json().catch(()=>({}));
-
-    if(!aptusSesionVigente(usuario,generacion)){
-      return;
-    }
-
-    if(!respuesta.ok){
-      if(respuesta.status === 409){
-        await pullIdentidadProfesional();
-        if(!aptusSesionVigente(usuario,generacion)) return;
-        actualizarRegistroIdentidadProfesionalUI();
-        validarPerfil(false);
-        render();
-        mensaje.textContent = IDENTIDAD_PROFESIONAL
-          ? "La identidad ya estaba registrada y fue recuperada."
-          : "Ya existe una identidad registrada. No se pudo recuperar.";
-        return;
-      }
-      throw new Error(resultado.error || "No se pudo registrar la identidad.");
-    }
-
-    if(respuesta.status !== 201 || resultado.registrado !== true){
-      throw new Error("Respuesta inesperada del servidor.");
-    }
-
-    await pullIdentidadProfesional();
-
-    if(!aptusSesionVigente(usuario,generacion)) return;
-
-    if(!IDENTIDAD_PROFESIONAL ||
-       IDENTIDAD_PROFESIONAL.nombreCompleto !== nombreCompleto ||
-       IDENTIDAD_PROFESIONAL.colegiado !== colegiado){
-      throw new Error("No se pudo confirmar la identidad guardada.");
+    // Reflejar en tu propia nube (si hay sesión) para que te siga entre dispositivos. Best-effort.
+    if(FB && FB.user && FB.db){
+      try {
+        await FB.db.collection("usuarios").doc(FB.user.uid)
+          .collection("identidad").doc("profesional")
+          .set({ uid: FB.user.uid, nombreCompleto, colegiado, actualizado: Date.now() });
+      } catch(e){ console.warn("No se pudo reflejar la identidad en la nube (quedó guardada localmente):", e); }
     }
 
     nombreEl.value = "";
@@ -6135,9 +6101,7 @@ async function registrarIdentidadProfesionalUI(){
     render();
 
   } catch(e) {
-    if(aptusSesionVigente(usuario,generacion)){
-      mensaje.textContent = e.message || "Error al registrar identidad.";
-    }
+    mensaje.textContent = e.message || "Error al registrar identidad.";
   } finally {
     boton.disabled = false;
   }
@@ -6164,6 +6128,7 @@ function refreshAuthModal(){
     const mem=document.getElementById("authMembresia");
     if(mem){
       if(FB.user.uid===ADMIN_UID){ mem.innerHTML="<b style='color:#255e40'>Administrador</b> · acceso total"; }
+      else if(MI_PLAN==="personal"){ mem.innerHTML="<b style='color:#255e40'>Versión personal</b> · acceso completo, sin límite de pacientes"; }
       else if(ENTITLED && MEMBRESIA){
         mem.innerHTML="Suscripción: <b style='color:#255e40'>activa hasta "+fmtFechaLarga(MEMBRESIA)+"</b>";
       } else if(MEMBRESIA){
@@ -7072,6 +7037,9 @@ function obtenerIdentidadValoracionActiva() {
   return identidad;
 }
 async function autorizarPacienteAPTUS(pacienteId, soloVerificar = false) {
+  // MODO PERSONAL: sin prueba/licencia ni backend. Autoriza localmente.
+  // Se mantienen las validaciones de sesión e identidad (el expediente necesita
+  // una identidad válida); se elimina la dependencia de /api/ y de AptusTrialClient.
   const user = FB && FB.user;
   const generacion = APTUS_SESSION_GENERATION;
   const contexto = APTUS_IDENTITY_CONTEXT;
@@ -7081,40 +7049,11 @@ async function autorizarPacienteAPTUS(pacienteId, soloVerificar = false) {
       !contexto ||
       contexto.uid !== user.uid ||
       !window.AptusPatientIdentity ||
-      !AptusPatientIdentity.esUUID(pacienteId) ||
-      !window.AptusTrialClient ||
-      typeof AptusTrialClient.consultarEstadoPrueba !== "function") {
+      !AptusPatientIdentity.esUUID(pacienteId)) {
     throw new Error("Sesion o identidad no valida");
   }
 
-  let resultado;
-
-  try {
-    resultado = await AptusTrialClient.consultarEstadoPrueba(
-      user,
-      pacienteId,
-      soloVerificar
-    );
-  } catch (error) {
-    if (!aptusSesionVigente(user, generacion) ||
-        APTUS_IDENTITY_CONTEXT !== contexto) {
-      throw new Error("La sesion cambio durante la autorizacion");
-    }
-
-    throw error;
-  }
-
-  if (!aptusSesionVigente(user, generacion) ||
-      APTUS_IDENTITY_CONTEXT !== contexto) {
-    throw new Error("La sesion cambio durante la autorizacion");
-  }
-
-  if (!resultado || resultado.autorizado !== true ||
-      !["pagado", "prueba"].includes(resultado.modalidad)) {
-    throw new Error("Autorizacion de paciente denegada");
-  }
-
-  return resultado;
+  return { autorizado: true, modalidad: "pagado" };
 }
 function limpiarFormularioClinico() {
 
