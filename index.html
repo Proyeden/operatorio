@@ -959,10 +959,10 @@
       <div class="grid2" style="margin-top:6px">
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:4px">HEMATOLOGÍA</div>
-          <div class="field"><label>WBC (xmm³)</label><input id="l_wbc" oninput="render()"></div>
+          <div class="field"><label>WBC (×10³/µL)</label><input id="l_wbc" oninput="render()"></div>
           <div class="field"><label>Hemoglobina (g/dl)</label><input id="l_hb" oninput="calc()"></div>
           <div class="field"><label>Hematocrito (%)</label><input id="l_hto" oninput="render()"></div>
-          <div class="field"><label>Plaquetas (xmm³)</label><input id="l_plt" oninput="render()"></div>
+          <div class="field"><label>Plaquetas (×10³/µL)</label><input id="l_plt" oninput="render()"></div>
           <div class="field"><label>Neutrófilos (%)</label><input id="l_neu" oninput="render()"></div>
         </div>
         <div>
@@ -4346,7 +4346,7 @@ function render(){
   <h2>Estudios complementarios</h2>
   <table><tr><td class="lab">EKG</td><td colspan="3">${orDash(val("ekg"))}</td></tr>
   <tr><td class="lab">Rx tórax</td><td colspan="3">${orDash(val("rx"))}</td></tr>
-  <tr><td class="lab-sm">WBC</td><td>${labVal("l_wbc","/mm³")}</td><td class="lab-sm">Creatinina</td><td>${labVal("l_cr","mg/dl")}</td></tr>
+  <tr><td class="lab-sm">WBC</td><td>${labVal("l_wbc","×10³/µL")}</td><td class="lab-sm">Creatinina</td><td>${labVal("l_cr","mg/dl")}</td></tr>
     ${(function(){
     const tfg=tfgCKDEPI(), crcl=crclCockcroftGault();
     if(tfg===null && crcl===null)return "";
@@ -4354,7 +4354,7 @@ function render(){
   })()}
   <tr><td class="lab-sm">Hemoglobina</td><td>${labVal("l_hb","g/dl")}</td><td class="lab-sm">BUN</td><td>${labVal("l_bun","mg/dl")}</td></tr>
   <tr><td class="lab-sm">Hematocrito</td><td>${labVal("l_hto","%")}</td><td class="lab-sm">Glucosa</td><td>${labVal("l_glu","mg/dl")}</td></tr>
-  <tr><td class="lab-sm">Plaquetas</td><td>${labVal("l_plt","/mm³")}</td><td class="lab-sm">Sodio</td><td>${labVal("l_na","mEq/l")}</td></tr>
+  <tr><td class="lab-sm">Plaquetas</td><td>${labVal("l_plt","×10³/µL")}</td><td class="lab-sm">Sodio</td><td>${labVal("l_na","mEq/l")}</td></tr>
   <tr><td class="lab-sm">Neutrófilos</td><td>${labVal("l_neu","%")}</td><td class="lab-sm">Potasio</td><td>${labVal("l_k","mEq/l")}</td></tr>
   ${(val("l_alb")||val("l_bili"))?`<tr><td class="lab-sm">Albúmina</td><td>${labVal("l_alb","g/dl")}</td><td class="lab-sm">Bilirrubina</td><td>${labVal("l_bili","mg/dl")}</td></tr>`:""}
   <tr><td class="lab-sm">Coagulación</td><td colspan="3">TP: ${orDash(val("l_tp"))} seg&nbsp;&nbsp; TPT: ${orDash(val("l_tpt"))} seg&nbsp;&nbsp; INR: ${orDash(val("l_inr"))}</td></tr>
@@ -5745,6 +5745,10 @@ async function aplicarFirma(){
     return;
   }
 
+  // Validar laboratorios ANTES que la contraseña (consistente con la impresión):
+  // un dato inválido debe avisar aunque la contraseña esté vacía.
+  if(!validarLaboratoriosFinalizacion())return;
+
   const input=document.getElementById("firmaPwd");
   const mensaje=document.getElementById("firmaMsg");
 
@@ -5755,7 +5759,6 @@ async function aplicarFirma(){
     return;
   }
 
-  if(!validarLaboratoriosFinalizacion())return;
   const autorizado=await verifyPwd(pwd);
 
   // Una respuesta tardia nunca debe firmar en otra sesion.
